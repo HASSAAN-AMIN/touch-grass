@@ -5,8 +5,8 @@ import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
 
 public abstract class Session {
-    private String sessionId;
-    private String mode;
+    private final String sessionId;
+    private final String mode;
 
     protected Session(String sessionId, String mode) {
         this.sessionId = sessionId;
@@ -17,16 +17,8 @@ public abstract class Session {
         return sessionId;
     }
 
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
-    }
-
     public String getMode() {
         return mode;
-    }
-
-    public void setMode(String mode) {
-        this.mode = mode;
     }
 
     public abstract void start();

@@ -9,7 +9,7 @@ public final class GameFactory {
         String selectedGameId = gameId == null ? GameCatalog.ENGINE_SNAKE : gameId;
         String sessionId = selectedGameId + "-" + UUID.randomUUID();
         return switch (mode) {
-            case "SinglePlayer", "LocalCoOp" -> new LocalSession(sessionId, selectedGameId, mode, "WASD", "ArrowKeys");
+            case "SinglePlayer", "LocalCoOp" -> new LocalSession(sessionId, selectedGameId, mode);
             case "LAN" -> new NetworkSession(sessionId, selectedGameId, mode);
             default -> throw new IllegalArgumentException("Unsupported mode: " + mode);
         };

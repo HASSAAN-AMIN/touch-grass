@@ -16,12 +16,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
 public final class NetworkSession extends Session {
     private final Object ioLock;
-    private final ConcurrentLinkedQueue<InputCommand> incomingCommands;
+    private final String engineId;
     private volatile boolean host;
     private volatile boolean connected;
     private volatile boolean running;
@@ -31,10 +30,8 @@ public final class NetworkSession extends Session {
     private volatile ObjectInputStream inputStream;
     private volatile GameState currentGameState;
     private volatile DriftTrackState currentDriftTrackState;
-    private final String engineId;
     private PongLogic pongLogic;
     private DriftTrackLogic driftTrackLogic;
-    private String hostIpAddress;
     private int port;
     private Consumer<NetworkSession> onConnected;
     private Consumer<String> onError;
@@ -42,39 +39,13 @@ public final class NetworkSession extends Session {
     public NetworkSession(String sessionId, String gameId, String mode) {
         super(sessionId, mode);
         this.ioLock = new Object();
-        this.incomingCommands = new ConcurrentLinkedQueue<>();
         this.engineId = GameCatalog.resolveEngineId(gameId);
-        this.hostIpAddress = "127.0.0.1";
         this.port = 8080;
         initializeGameLogic();
     }
 
-    public String getHostIpAddress() {
-        return hostIpAddress;
-    }
-
-    public void setHostIpAddress(String hostIpAddress) {
-        this.hostIpAddress = hostIpAddress;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public void setPort(int port) {
-        this.port = port;
-    }
-
-    public boolean isHost() {
-        return host;
-    }
-
     public void setHost(boolean host) {
         this.host = host;
-    }
-
-    public boolean isConnected() {
-        return connected;
     }
 
     public void setOnConnected(Consumer<NetworkSession> onConnected) {
@@ -102,10 +73,7 @@ public final class NetworkSession extends Session {
 
     @Override
     public void handleInput(InputCommand inputCommand, boolean pressed) {
-        if (!pressed || inputCommand == null) {
-            return;
-        }
-        if (!connected) {
+        if (!pressed || inputCommand == null || !connected) {
             return;
         }
         if (host) {
@@ -118,26 +86,23 @@ public final class NetworkSession extends Session {
                 return;
             }
         }
-        sendCommand(inputCommand);
+        sendObject(inputCommand);
     }
 
     @Override
     public void tick() {
-        if (host && connected) {
-            if (pongLogic != null) {
-                pongLogic.update();
-                currentGameState = pongLogic.toGameState();
-                sendObject(currentGameState);
-                return;
-            }
-            if (driftTrackLogic != null) {
-                driftTrackLogic.update();
-                currentDriftTrackState = driftTrackLogic.toState();
-                sendObject(currentDriftTrackState);
-                return;
-            }
+        if (!host || !connected) {
+            return;
         }
-        syncState();
+        if (pongLogic != null) {
+            pongLogic.update();
+            currentGameState = pongLogic.toGameState();
+            sendObject(currentGameState);
+        } else if (driftTrackLogic != null) {
+            driftTrackLogic.update();
+            currentDriftTrackState = driftTrackLogic.toState();
+            sendObject(currentDriftTrackState);
+        }
     }
 
     @Override
@@ -178,7 +143,7 @@ public final class NetworkSession extends Session {
         running = true;
         CompletableFuture.runAsync(() -> {
             try {
-                serverSocket = new ServerSocket(port);
+                serverSocket = new ServerSocket(this.port);
                 socket = serverSocket.accept();
                 initializeStreams(socket);
                 if (pongLogic != null) {
@@ -198,13 +163,12 @@ public final class NetworkSession extends Session {
     }
 
     public void joinGame(String ipAddress, int port) {
-        this.hostIpAddress = ipAddress;
         this.port = port;
         this.host = false;
         running = true;
         CompletableFuture.runAsync(() -> {
             try {
-                socket = new Socket(ipAddress, port);
+                socket = new Socket(ipAddress, this.port);
                 initializeStreams(socket);
                 notifyConnected();
                 startClientStateLoop();
@@ -216,24 +180,6 @@ public final class NetworkSession extends Session {
         });
     }
 
-    public void sendCommand(InputCommand cmd) {
-        sendObject(cmd);
-    }
-
-    public InputCommand pollIncomingCommand() {
-        return incomingCommands.poll();
-    }
-
-    public void syncState() {
-        while (incomingCommands.poll() != null) {
-            // Drain queue when no dedicated state sync is used.
-        }
-    }
-
-    public boolean isDriftTrackEngine() {
-        return GameCatalog.ENGINE_DRIFT_TRACK.equalsIgnoreCase(engineId);
-    }
-
     private void sendObject(Serializable payload) {
         if (!connected || outputStream == null || payload == null) {
             return;
@@ -243,8 +189,6 @@ public final class NetworkSession extends Session {
                 outputStream.reset();
                 outputStream.writeObject(payload);
                 outputStream.flush();
-            } catch (SocketException e) {
-                handleNetworkFailure("Unable to send payload", e);
             } catch (IOException e) {
                 handleNetworkFailure("Unable to send payload", e);
             }
@@ -267,8 +211,6 @@ public final class NetworkSession extends Session {
                         pongLogic.processCommand(command, 2);
                     } else if (driftTrackLogic != null) {
                         applyDriftCommand(driftTrackLogic, command, 2);
-                    } else {
-                        incomingCommands.offer(command);
                     }
                 }
             } catch (SocketException e) {
@@ -293,8 +235,6 @@ public final class NetworkSession extends Session {
                     currentGameState = gameState;
                 } else if (payload instanceof DriftTrackState driftState) {
                     currentDriftTrackState = driftState;
-                } else if (payload instanceof InputCommand command) {
-                    incomingCommands.offer(command);
                 }
             } catch (SocketException e) {
                 if (running) {

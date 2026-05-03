@@ -26,7 +26,7 @@ public final class LocalSession extends Session {
     private ShooterLogic shooterLogic;
     private DriftTrackLogic driftTrackLogic;
 
-    public LocalSession(String sessionId, String gameId, String mode, String p1Controls, String p2Controls) {
+    public LocalSession(String sessionId, String gameId, String mode) {
         super(sessionId, mode);
         this.engineId = GameCatalog.resolveEngineId(gameId);
         initializeGameLogic();
@@ -93,10 +93,6 @@ public final class LocalSession extends Session {
             } else if (inputCommand == InputCommand.RIGHT) {
                 driftTrackLogic.steerPlayerRight(1);
             }
-            return;
-        }
-        if (ticTacToeLogic != null && pressed && inputCommand == InputCommand.ACTION) {
-            // ACTION is kept for keyboard-based move confirmation extensions.
         }
     }
 

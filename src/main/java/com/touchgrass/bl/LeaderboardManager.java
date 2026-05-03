@@ -2,14 +2,14 @@ package com.touchgrass.bl;
 
 import com.touchgrass.db.DatabaseConnection;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public final class LeaderboardManager {
@@ -68,23 +68,19 @@ public final class LeaderboardManager {
             try (PreparedStatement stmt = connection.prepareStatement(TOP_SCORES_QUERY)) {
                 stmt.setString(1, gameId);
                 try (ResultSet rs = stmt.executeQuery()) {
-                int rank = 1;
-                while (rs.next()) {
-                    String username = rs.getString("username");
-                    int points = rs.getInt("pointsValue");
-                    topScores.add(rank + ". " + username + " - " + points + " pts");
-                    rank++;
-                }
+                    int rank = 1;
+                    while (rs.next()) {
+                        String username = rs.getString("username");
+                        int points = rs.getInt("pointsValue");
+                        topScores.add(rank + ". " + username + " - " + points + " pts");
+                        rank++;
+                    }
                 }
             }
         } catch (SQLException | IllegalStateException e) {
             System.err.println("Database Error: " + e.getMessage());
         }
         return topScores;
-    }
-
-    public List<String> getTopScores() {
-        return getTopScores("snake");
     }
 
     private String findProfileId(Connection connection, String username) throws SQLException {
