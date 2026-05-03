@@ -89,9 +89,14 @@ public final class SystemController {
 
     public void handleGameOver(String gameId, int finalScore, boolean saveScore) {
         if (saveScore && currentUsername != null && !currentUsername.isBlank()) {
-            boolean inserted = leaderboardManager.insertScore(currentUsername, gameId, finalScore);
-            if (!inserted) {
+            try {
+                boolean inserted = leaderboardManager.insertScore(currentUsername, gameId, finalScore);
+                if (!inserted) {
+                    notifyStatus("Unable to save score right now.");
+                }
+            } catch (RuntimeException e) {
                 notifyStatus("Unable to save score right now.");
+                System.err.println("Database Error: " + e.getMessage());
             }
         }
 

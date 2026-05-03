@@ -44,7 +44,7 @@ public final class LeaderboardManager {
                 stmt.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
                 return stmt.executeUpdate() > 0;
             }
-        } catch (SQLException e) {
+        } catch (SQLException | IllegalStateException e) {
             System.err.println("Database Error: " + e.getMessage());
             return false;
         }
@@ -64,7 +64,7 @@ public final class LeaderboardManager {
                     rank++;
                 }
             }
-        } catch (SQLException e) {
+        } catch (SQLException | IllegalStateException e) {
             System.err.println("Database Error: " + e.getMessage());
         }
         return topScores;

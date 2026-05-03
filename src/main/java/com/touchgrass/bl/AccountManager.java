@@ -50,7 +50,7 @@ public class AccountManager {
                     return rs.next();
                 }
             }
-        } catch (SQLException e) {
+        } catch (SQLException | IllegalStateException e) {
             lastErrorMessage = "Database Error: " + e.getMessage();
             System.err.println(lastErrorMessage);
             return false;
@@ -112,7 +112,7 @@ public class AccountManager {
             } finally {
                 connection.setAutoCommit(initialAutoCommit);
             }
-        } catch (SQLException e) {
+        } catch (SQLException | IllegalStateException e) {
             lastErrorMessage = "Database Error: " + e.getMessage();
             System.err.println(lastErrorMessage);
             return false;
