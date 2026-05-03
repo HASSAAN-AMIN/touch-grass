@@ -37,6 +37,11 @@ public final class NetworkSession extends Session {
         System.out.println("Network session ended: " + getSessionId());
     }
 
+    @Override
+    public void handleInput(String inputKey, boolean pressed) {
+        System.out.println("Network input " + (pressed ? "pressed" : "released") + ": " + inputKey);
+    }
+
     public void syncState() {
         System.out.println("Syncing network session state...");
     }

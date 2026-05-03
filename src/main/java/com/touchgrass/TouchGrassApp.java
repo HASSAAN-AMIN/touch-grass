@@ -8,7 +8,7 @@ import javafx.stage.Stage;
 public final class TouchGrassApp extends Application {
     @Override
     public void start(Stage primaryStage) {
-        SystemController systemController = new SystemController();
+        SystemController systemController = new SystemController(primaryStage);
         LoginView loginView = new LoginView(primaryStage, systemController);
 
         primaryStage.setTitle("Touch Grass");

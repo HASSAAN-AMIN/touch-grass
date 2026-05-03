@@ -37,6 +37,12 @@ public final class LocalSession extends Session {
         System.out.println("Local session ended: " + getSessionId());
     }
 
+    @Override
+    public void handleInput(String inputKey, boolean pressed) {
+        System.out.println("Local input " + (pressed ? "pressed" : "released") + ": " + inputKey);
+        processInput();
+    }
+
     public void processInput() {
         System.out.println("Processing local split-keyboard input...");
     }

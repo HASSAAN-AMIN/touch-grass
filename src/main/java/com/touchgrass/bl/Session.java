@@ -28,4 +28,6 @@ public abstract class Session {
     public abstract void start();
 
     public abstract void end();
+
+    public abstract void handleInput(String inputKey, boolean pressed);
 }

@@ -1,10 +1,15 @@
 package com.touchgrass.bl;
 
+import com.touchgrass.ui.GameView;
+import javafx.stage.Stage;
+
 public final class SystemController {
+    private final Stage stage;
     private final AccountManager accountManager;
     private final GameFactory gameFactory;
 
-    public SystemController() {
+    public SystemController(Stage stage) {
+        this.stage = stage;
         this.accountManager = new AccountManager();
         this.gameFactory = new GameFactory();
     }
@@ -14,7 +19,19 @@ public final class SystemController {
     }
 
     public void launchGame(String gameId, String mode) {
-        Session session = gameFactory.createSession(gameId, mode);
+        Session session = gameFactory.createSession(gameId, normalizeMode(mode));
+        GameView gameView = new GameView(stage, this, session);
+        stage.setScene(gameView.createScene());
         session.start();
+        gameView.startGameLoop();
+    }
+
+    private String normalizeMode(String mode) {
+        return switch (mode) {
+            case "Single Player" -> "SinglePlayer";
+            case "Local Co-Op" -> "LocalCoOp";
+            case "LAN Multiplayer" -> "LAN";
+            default -> mode;
+        };
     }
 }
