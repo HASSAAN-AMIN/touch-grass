@@ -7,6 +7,7 @@ import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
 import com.touchgrass.bl.games.PongLogic;
 import com.touchgrass.bl.games.SnakeLogic;
+import com.touchgrass.models.TicTacToeLogic;
 import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -18,6 +19,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -52,6 +54,7 @@ public final class GameView {
     private double fps;
     private boolean gameOverOverlayShown;
     private boolean gameOverActionTriggered;
+    private String inlineStatusMessage;
 
     public GameView(Stage stage, SystemController systemController, String gameId, Session activeSession) {
         this.stage = stage;
@@ -64,6 +67,7 @@ public final class GameView {
         this.playArea = new StackPane();
         this.gameOverOverlay = new VBox(12);
         this.gameOverScoreLabel = new Label();
+        this.inlineStatusMessage = "";
     }
 
     public Parent createRoot() {
@@ -85,6 +89,7 @@ public final class GameView {
         VBox canvasContainer = new VBox(canvas);
         canvasContainer.setPadding(new Insets(0, 20, 20, 20));
         canvasContainer.setAlignment(Pos.CENTER);
+        canvas.setOnMouseClicked(this::handleCanvasClicked);
 
         setupGameOverOverlay();
         playArea.getChildren().setAll(canvasContainer, gameOverOverlay);
@@ -129,7 +134,7 @@ public final class GameView {
                     activeSession.tick();
                     lastLogicTickTime = now;
                 }
-                if (!gameOverOverlayShown && activeSession.isGameOver()) {
+                if (!gameOverOverlayShown && activeSession.isGameOver() && !isTicTacToeGame()) {
                     stopGameLoop();
                     showGameOverOverlay();
                 }
@@ -151,6 +156,7 @@ public final class GameView {
 
         drawPongIfActive(graphics);
         drawSnakeIfActive(graphics);
+        drawTicTacToeIfActive(graphics);
 
         graphics.setFill(Color.web("#4B5563"));
         graphics.setFont(Font.font("Consolas", 24));
@@ -160,6 +166,10 @@ public final class GameView {
         graphics.setFont(Font.font("Consolas", 16));
         graphics.fillText("Session: " + activeSession.getMode(), 32, 72);
         graphics.fillText("Use WASD + Arrows, press ESC to quit", 32, 96);
+        if (!inlineStatusMessage.isBlank()) {
+            graphics.setFill(Color.web("#B42318"));
+            graphics.fillText(inlineStatusMessage, 32, 120);
+        }
     }
 
     private void handleKeyPressed(KeyEvent event) {
@@ -326,6 +336,65 @@ public final class GameView {
                 startY - 18);
     }
 
+    private void drawTicTacToeIfActive(GraphicsContext graphics) {
+        if (!isTicTacToeGame()) {
+            return;
+        }
+        if (!(activeSession instanceof LocalSession localSession)) {
+            return;
+        }
+        TicTacToeLogic logic = localSession.getTicTacToeLogic();
+        if (logic == null) {
+            return;
+        }
+
+        double boardSize = 420;
+        double startX = (WIDTH - boardSize) / 2.0;
+        double startY = (HEIGHT - boardSize) / 2.0 + 24;
+        double cellSize = boardSize / TicTacToeLogic.GRID_SIZE;
+
+        graphics.setFill(Color.web("#FFFFFF"));
+        graphics.fillRoundRect(startX - 14, startY - 14, boardSize + 28, boardSize + 28, 24, 24);
+        graphics.setFill(Color.web("#EEF2F7"));
+        graphics.fillRoundRect(startX, startY, boardSize, boardSize, 18, 18);
+
+        graphics.setStroke(Color.web("#A8B3C2"));
+        graphics.setLineWidth(3);
+        for (int i = 1; i < TicTacToeLogic.GRID_SIZE; i++) {
+            double pos = startX + (i * cellSize);
+            graphics.strokeLine(pos, startY, pos, startY + boardSize);
+            pos = startY + (i * cellSize);
+            graphics.strokeLine(startX, pos, startX + boardSize, pos);
+        }
+
+        char[][] board = logic.getBoardCopy();
+        graphics.setFont(Font.font("Consolas", 72));
+        for (int row = 0; row < TicTacToeLogic.GRID_SIZE; row++) {
+            for (int col = 0; col < TicTacToeLogic.GRID_SIZE; col++) {
+                char value = board[row][col];
+                if (value == ' ') {
+                    continue;
+                }
+                graphics.setFill(value == 'X' ? Color.web("#7FB069") : Color.web("#6EA8FE"));
+                double textX = startX + (col * cellSize) + 48;
+                double textY = startY + (row * cellSize) + 92;
+                graphics.fillText(String.valueOf(value), textX, textY);
+            }
+        }
+
+        graphics.setFill(Color.web("#4B5563"));
+        graphics.setFont(Font.font("Consolas", 18));
+        if (logic.isGameOver()) {
+            if (logic.isDraw()) {
+                graphics.fillText("Draw game.", startX, startY - 14);
+            } else {
+                graphics.fillText("Winner: " + logic.getWinner(), startX, startY - 14);
+            }
+        } else {
+            graphics.fillText("Turn: " + logic.getCurrentPlayer(), startX, startY - 14);
+        }
+    }
+
     private boolean shouldTickLogic(long now) {
         if (isPongGame()) {
             return true;
@@ -339,6 +408,10 @@ public final class GameView {
 
     private boolean isPongGame() {
         return "pong".equalsIgnoreCase(gameId);
+    }
+
+    private boolean isTicTacToeGame() {
+        return "tic-tac-toe".equalsIgnoreCase(gameId);
     }
 
     private boolean isLocalCoOpPong() {
@@ -374,6 +447,39 @@ public final class GameView {
 
     private void returnToLobby() {
         handleGameOverAction(false);
+    }
+
+    private void handleCanvasClicked(MouseEvent event) {
+        if (!isTicTacToeGame()) {
+            return;
+        }
+        if (!(activeSession instanceof LocalSession localSession)) {
+            return;
+        }
+        TicTacToeLogic logic = localSession.getTicTacToeLogic();
+        if (logic == null || logic.isGameOver()) {
+            return;
+        }
+
+        double boardSize = 420;
+        double startX = (WIDTH - boardSize) / 2.0;
+        double startY = (HEIGHT - boardSize) / 2.0 + 24;
+        double cellSize = boardSize / TicTacToeLogic.GRID_SIZE;
+
+        double x = event.getX();
+        double y = event.getY();
+        if (x < startX || x > startX + boardSize || y < startY || y > startY + boardSize) {
+            return;
+        }
+
+        int col = (int) ((x - startX) / cellSize);
+        int row = (int) ((y - startY) / cellSize);
+        boolean placed = localSession.placeTicTacToeMark(row, col);
+        if (!placed) {
+            inlineStatusMessage = "Cell already occupied. Pick another.";
+            return;
+        }
+        inlineStatusMessage = "";
     }
 
     private void setupGameOverOverlay() {

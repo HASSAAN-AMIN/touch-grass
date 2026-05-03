@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -25,9 +26,12 @@ public class AccountManager {
             "INSERT INTO Account (accountId, username, passwordHash, email, createdAt) VALUES (?, ?, ?, ?, ?)";
     private static final String INSERT_PROFILE_QUERY =
             "INSERT INTO PlayerProfile (profileId, accountId, avatarUrl, totalGamesPlayed, isOnline) VALUES (?, ?, ?, ?, ?)";
+    private String lastErrorMessage;
 
     public boolean authenticate(String username, String password) {
+        lastErrorMessage = null;
         if (isNullOrBlank(username) || isNullOrBlank(password)) {
+            lastErrorMessage = "Username and password are required.";
             return false;
         }
 
@@ -47,13 +51,16 @@ public class AccountManager {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Database Error: " + e.getMessage());
+            lastErrorMessage = "Database Error: " + e.getMessage();
+            System.err.println(lastErrorMessage);
             return false;
         }
     }
 
     public boolean registerUser(String username, String email, String password) {
+        lastErrorMessage = null;
         if (isNullOrBlank(username) || isNullOrBlank(email) || isNullOrBlank(password)) {
+            lastErrorMessage = "Username, email, and password are required.";
             return false;
         }
 
@@ -65,6 +72,7 @@ public class AccountManager {
             Connection connection = DatabaseConnection.getInstance().getConnection();
 
             if (accountExists(connection, username, email)) {
+                lastErrorMessage = "Username or email is already in use.";
                 return false;
             }
 
@@ -91,17 +99,28 @@ public class AccountManager {
 
                 connection.commit();
                 return true;
+            } catch (SQLIntegrityConstraintViolationException e) {
+                connection.rollback();
+                lastErrorMessage = "Username or email is already in use.";
+                System.err.println("Database Error: " + e.getMessage());
+                return false;
             } catch (SQLException e) {
                 connection.rollback();
-                System.err.println("Database Error: " + e.getMessage());
+                lastErrorMessage = "Database Error: " + e.getMessage();
+                System.err.println(lastErrorMessage);
                 return false;
             } finally {
                 connection.setAutoCommit(initialAutoCommit);
             }
         } catch (SQLException e) {
-            System.err.println("Database Error: " + e.getMessage());
+            lastErrorMessage = "Database Error: " + e.getMessage();
+            System.err.println(lastErrorMessage);
             return false;
         }
+    }
+
+    public String getLastErrorMessage() {
+        return lastErrorMessage;
     }
 
     private boolean accountExists(Connection connection, String username, String email) throws SQLException {

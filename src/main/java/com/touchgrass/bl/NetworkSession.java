@@ -82,7 +82,6 @@ public final class NetworkSession extends Session {
     @Override
     public void start() {
         running = true;
-        System.out.println("Network session active: " + getSessionId());
     }
 
     @Override
@@ -93,7 +92,6 @@ public final class NetworkSession extends Session {
         closeQuietly(outputStream);
         closeQuietly(socket);
         closeQuietly(serverSocket);
-        System.out.println("Network session ended: " + getSessionId());
     }
 
     @Override
@@ -215,9 +213,8 @@ public final class NetworkSession extends Session {
     }
 
     public void syncState() {
-        InputCommand received;
-        while ((received = incomingCommands.poll()) != null) {
-            System.out.println("Synced remote command: " + received);
+        while (incomingCommands.poll() != null) {
+            // Drain legacy queue when no dedicated state sync is used.
         }
     }
 

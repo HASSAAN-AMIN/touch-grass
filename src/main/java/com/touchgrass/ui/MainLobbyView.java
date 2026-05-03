@@ -53,6 +53,10 @@ public final class MainLobbyView {
     }
 
     public Parent createRoot() {
+        systemController.setStatusMessageListener(message -> {
+            lanStatusLabel.setText(message);
+        });
+
         Label title = new Label("Touch Grass");
         title.setStyle("-fx-font-size: 30px; -fx-text-fill: #111827; -fx-font-weight: 800;");
 

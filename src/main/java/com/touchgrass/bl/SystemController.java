@@ -8,6 +8,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public final class SystemController {
     private static final int LAN_PORT = 8080;
@@ -17,6 +18,7 @@ public final class SystemController {
     private final LeaderboardManager leaderboardManager;
     private String currentUsername;
     private Session activeSession;
+    private Consumer<String> statusMessageListener;
 
     public SystemController(Stage stage) {
         this.stage = stage;
@@ -31,8 +33,24 @@ public final class SystemController {
             currentUsername = username;
             return true;
         }
+        if (accountManager.getLastErrorMessage() != null) {
+            notifyStatus(accountManager.getLastErrorMessage());
+        }
         currentUsername = null;
         return false;
+    }
+
+    public String handleRegistration(String username, String email, String password, String confirmPassword) {
+        if (password == null || !password.equals(confirmPassword)) {
+            return "Passwords do not match.";
+        }
+        boolean registered = accountManager.registerUser(username, email, password);
+        if (registered) {
+            return null;
+        }
+        return accountManager.getLastErrorMessage() == null
+                ? "Registration failed."
+                : accountManager.getLastErrorMessage();
     }
 
     public void launchGame(String gameId, String mode) {
@@ -51,7 +69,7 @@ public final class SystemController {
             transitionToGameView(gameId, connectedSession);
             connectedSession.start();
         }));
-        networkSession.setOnError(message -> System.err.println("Host LAN error: " + message));
+        networkSession.setOnError(this::notifyStatus);
         networkSession.hostGame(LAN_PORT);
     }
 
@@ -65,7 +83,7 @@ public final class SystemController {
             transitionToGameView(gameId, connectedSession);
             connectedSession.start();
         }));
-        networkSession.setOnError(message -> System.err.println("Join LAN error: " + message));
+        networkSession.setOnError(this::notifyStatus);
         networkSession.joinGame(ipAddress, LAN_PORT);
     }
 
@@ -73,7 +91,7 @@ public final class SystemController {
         if (saveScore && currentUsername != null && !currentUsername.isBlank()) {
             boolean inserted = leaderboardManager.insertScore(currentUsername, gameId, finalScore);
             if (!inserted) {
-                System.err.println("Score was not saved for user: " + currentUsername);
+                notifyStatus("Unable to save score right now.");
             }
         }
 
@@ -90,6 +108,10 @@ public final class SystemController {
 
     public List<String> getTopScores() {
         return leaderboardManager.getTopScores();
+    }
+
+    public void setStatusMessageListener(Consumer<String> statusMessageListener) {
+        this.statusMessageListener = statusMessageListener;
     }
 
     public void handleLogout() {
@@ -124,5 +146,11 @@ public final class SystemController {
             gameView.bindToScene(scene);
         }
         gameView.startGameLoop();
+    }
+
+    private void notifyStatus(String message) {
+        if (statusMessageListener != null && message != null && !message.isBlank()) {
+            Platform.runLater(() -> statusMessageListener.accept(message));
+        }
     }
 }
