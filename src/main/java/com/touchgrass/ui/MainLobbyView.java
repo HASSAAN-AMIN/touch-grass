@@ -187,7 +187,7 @@ public final class MainLobbyView {
 
         VBox details = new VBox(6, titleLabel, subtitleLabel, tag);
 
-        Button playButton = createModeButton("SELECT MODE", neon, darkTheme, event -> showModePane(game.title(), game.gameId()));
+        Button playButton = createModeButton("SELECT MODE", neon, darkTheme, event -> showModePane(game.gameId()));
         Button boardButton = createGhostButton("VIEW BOARD", darkTheme, event -> {
             leaderboardGameId = game.gameId();
             showLeaderboardPane(game.gameId());
@@ -224,22 +224,24 @@ public final class MainLobbyView {
 
         selectedGameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: " + secondaryText(darkTheme) + ";");
 
+        GameCatalog.GameDescriptor selectedGame = GameCatalog.getById(selectedGameId);
         Button singlePlayer = createModeButton("SINGLE PLAYER", neon, darkTheme, event -> systemController.launchGame(selectedGameId, "Single Player"));
+        if (!selectedGame.supportsSinglePlayer()) {
+            singlePlayer.setDisable(true);
+            singlePlayer.setText("SINGLE PLAYER (NOT AVAILABLE)");
+            singlePlayer.setStyle(disabledModeStyle(darkTheme));
+        }
         Button localCoOp = createModeButton("LOCAL CO-OP", neon, darkTheme, event -> systemController.launchGame(selectedGameId, "Local Co-Op"));
+        if (!selectedGame.supportsLocalCoOp()) {
+            localCoOp.setDisable(true);
+            localCoOp.setText("LOCAL CO-OP (NOT AVAILABLE)");
+            localCoOp.setStyle(disabledModeStyle(darkTheme));
+        }
         Button lan = createModeButton("LAN MULTIPLAYER", gameNeon("pong"), darkTheme, event -> showLanChoicePane());
-        if (!GameCatalog.ENGINE_PONG.equalsIgnoreCase(GameCatalog.resolveEngineId(selectedGameId))) {
+        if (!selectedGame.supportsLan()) {
             lan.setDisable(true);
-            lan.setText("LAN MULTIPLAYER (PONG ONLY)");
-            lan.setStyle("-fx-background-color: " + (darkTheme ? "rgba(8,14,30,0.58)" : "rgba(220,232,246,0.80)") + ";"
-                    + "-fx-text-fill: " + secondaryText(darkTheme) + ";"
-                    + "-fx-font-size: 12px;"
-                    + "-fx-font-weight: 900;"
-                    + "-fx-letter-spacing: 1px;"
-                    + "-fx-border-color: " + borderColor(darkTheme) + ";"
-                    + "-fx-border-width: 1.1;"
-                    + "-fx-background-radius: 12;"
-                    + "-fx-border-radius: 12;"
-                    + "-fx-padding: 10 14 10 14;");
+            lan.setText("LAN MULTIPLAYER (NOT AVAILABLE)");
+            lan.setStyle(disabledModeStyle(darkTheme));
         }
         Button viewBoard = createModeButton("VIEW LEADERBOARD", neon, darkTheme, event -> showLeaderboardPane(selectedGameId));
         Button back = createGhostButton("BACK", darkTheme, event -> showGamesPane());
@@ -293,14 +295,14 @@ public final class MainLobbyView {
         Label overline = new Label("TOP SCORES");
         overline.setStyle(overlineStyle(darkTheme));
 
-        Label heading = new Label(game.title().toUpperCase() + " LEADERBOARD");
+        Label heading = new Label(game.icon() + " " + game.title().toUpperCase() + " LEADERBOARD");
         heading.setStyle("-fx-font-size: 22px; -fx-font-weight: 900; -fx-letter-spacing: 2px; -fx-text-fill: " + primaryText(darkTheme) + ";");
 
         HBox tabs = new HBox(6);
         tabs.setAlignment(Pos.CENTER_LEFT);
         for (GameCatalog.GameDescriptor descriptor : GameCatalog.GAMES) {
             Button tab = createModeButton(
-                    descriptor.title().toUpperCase(),
+                    descriptor.icon() + " " + descriptor.title().toUpperCase(),
                     descriptor.neonColor(),
                     darkTheme,
                     event -> {
@@ -480,10 +482,11 @@ public final class MainLobbyView {
         return button;
     }
 
-    private void showModePane(String gameTitle, String gameId) {
+    private void showModePane(String gameId) {
         selectedGameId = gameId;
-        selectedGameTitle = gameTitle;
-        selectedGameLabel.setText("Selected game: " + gameTitle);
+        GameCatalog.GameDescriptor descriptor = GameCatalog.getById(gameId);
+        selectedGameTitle = descriptor.title();
+        selectedGameLabel.setText("Selected game: " + descriptor.icon() + " " + descriptor.title());
         leaderboardGameId = gameId;
         setupModePane(systemController.getUiSettings().getThemeMode() != UiSettings.ThemeMode.LIGHT);
         showPane(modePane);
@@ -495,6 +498,12 @@ public final class MainLobbyView {
 
     private void showLanChoicePane() {
         boolean darkTheme = systemController.getUiSettings().getThemeMode() != UiSettings.ThemeMode.LIGHT;
+        GameCatalog.GameDescriptor selectedGame = GameCatalog.getById(selectedGameId);
+        if (!selectedGame.supportsLan()) {
+            globalStatusLabel.setText(selectedGame.title() + " does not support LAN mode.");
+            showModePane(selectedGame.gameId());
+            return;
+        }
         Label overline = new Label("NETWORK SESSION");
         overline.setStyle(overlineStyle(darkTheme));
 
@@ -507,7 +516,7 @@ public final class MainLobbyView {
         String neon = gameNeon("pong");
         Button host = createModeButton("HOST GAME", neon, darkTheme, event -> showHostWaitingPane());
         Button join = createModeButton("JOIN GAME", neon, darkTheme, event -> showJoinPane());
-        Button back = createGhostButton("BACK", darkTheme, event -> showModePane(selectedGameTitle, selectedGameId));
+        Button back = createGhostButton("BACK", darkTheme, event -> showModePane(selectedGameId));
 
         VBox card = new VBox(12, overline, title, game, host, join, back);
         card.setPadding(new Insets(24));
@@ -641,6 +650,19 @@ public final class MainLobbyView {
                 + "-fx-letter-spacing: 1px;"
                 + "-fx-border-color: " + neon + ";"
                 + "-fx-border-width: 1.2;"
+                + "-fx-background-radius: 12;"
+                + "-fx-border-radius: 12;"
+                + "-fx-padding: 10 14 10 14;";
+    }
+
+    private String disabledModeStyle(boolean darkTheme) {
+        return "-fx-background-color: " + (darkTheme ? "rgba(8,14,30,0.58)" : "rgba(220,232,246,0.80)") + ";"
+                + "-fx-text-fill: " + secondaryText(darkTheme) + ";"
+                + "-fx-font-size: 12px;"
+                + "-fx-font-weight: 900;"
+                + "-fx-letter-spacing: 1px;"
+                + "-fx-border-color: " + borderColor(darkTheme) + ";"
+                + "-fx-border-width: 1.1;"
                 + "-fx-background-radius: 12;"
                 + "-fx-border-radius: 12;"
                 + "-fx-padding: 10 14 10 14;";

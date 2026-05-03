@@ -1,5 +1,6 @@
 package com.touchgrass.bl;
 
+import com.touchgrass.models.GameCatalog;
 import com.touchgrass.ui.GameView;
 import com.touchgrass.ui.LoginView;
 import com.touchgrass.ui.MainLobbyView;
@@ -56,12 +57,22 @@ public final class SystemController {
     }
 
     public void launchGame(String gameId, String mode) {
-        Session session = gameFactory.createSession(gameId, normalizeMode(mode));
+        String normalizedMode = normalizeMode(mode);
+        if (!isModeSupported(gameId, normalizedMode)) {
+            GameCatalog.GameDescriptor descriptor = GameCatalog.getById(gameId);
+            notifyStatus(descriptor.title() + " does not support " + mode + ".");
+            return;
+        }
+        Session session = gameFactory.createSession(gameId, normalizedMode);
         transitionToGameView(gameId, session);
         session.start();
     }
 
     public void hostLanGame(String gameId) {
+        if (!isModeSupported(gameId, "LAN")) {
+            notifyStatus(GameCatalog.getById(gameId).title() + " does not support LAN mode.");
+            return;
+        }
         Session session = gameFactory.createSession(gameId, "LAN");
         if (!(session instanceof NetworkSession networkSession)) {
             return;
@@ -76,6 +87,10 @@ public final class SystemController {
     }
 
     public void joinLanGame(String gameId, String ipAddress) {
+        if (!isModeSupported(gameId, "LAN")) {
+            notifyStatus(GameCatalog.getById(gameId).title() + " does not support LAN mode.");
+            return;
+        }
         Session session = gameFactory.createSession(gameId, "LAN");
         if (!(session instanceof NetworkSession networkSession)) {
             return;
@@ -157,6 +172,16 @@ public final class SystemController {
             case "Local Co-Op" -> "LocalCoOp";
             case "LAN Multiplayer" -> "LAN";
             default -> mode;
+        };
+    }
+
+    private boolean isModeSupported(String gameId, String normalizedMode) {
+        GameCatalog.GameDescriptor descriptor = GameCatalog.getById(gameId);
+        return switch (normalizedMode) {
+            case "SinglePlayer" -> descriptor.supportsSinglePlayer();
+            case "LocalCoOp" -> descriptor.supportsLocalCoOp();
+            case "LAN" -> descriptor.supportsLan();
+            default -> true;
         };
     }
 

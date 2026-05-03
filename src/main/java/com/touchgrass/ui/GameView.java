@@ -659,7 +659,23 @@ public final class GameView {
 
     private void handleCanvasClicked(MouseEvent event) {
         if (isTargetTapGame() && activeSession instanceof LocalSession localSession) {
-            boolean hit = localSession.handleTargetTap(event.getX() / Math.max(1, canvas.getWidth()), event.getY() / Math.max(1, canvas.getHeight()));
+            if (localSession.getTargetTapLogic() == null) {
+                inlineStatusMessage = "Target Tap unavailable in this session.";
+                return;
+            }
+            double boardWidth = canvas.getWidth() * 0.84;
+            double boardHeight = canvas.getHeight() * 0.86;
+            double startX = (canvas.getWidth() - boardWidth) / 2.0;
+            double startY = (canvas.getHeight() - boardHeight) / 2.0;
+            double x = event.getX();
+            double y = event.getY();
+            if (x < startX || x > startX + boardWidth || y < startY || y > startY + boardHeight) {
+                inlineStatusMessage = "Tap inside the board area.";
+                return;
+            }
+            double localXRatio = (x - startX) / Math.max(1, boardWidth);
+            double localYRatio = (y - startY) / Math.max(1, boardHeight);
+            boolean hit = localSession.handleTargetTap(localXRatio, localYRatio);
             inlineStatusMessage = hit ? "Nice hit." : "Tap on the cyan target.";
             return;
         }
