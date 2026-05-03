@@ -3,42 +3,56 @@ package com.touchgrass.ui;
 import com.touchgrass.bl.SystemController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.effect.DropShadow;
 import javafx.stage.Stage;
-
-import java.util.List;
-import java.util.Optional;
 
 public final class MainLobbyView {
     private final Stage stage;
     private final SystemController systemController;
+    private final StackPane centerStack;
+    private final VBox gamesPane;
+    private final VBox modePane;
+    private final Label selectedGameLabel;
+    private String selectedGameId;
 
     public MainLobbyView(Stage stage, SystemController systemController) {
         this.stage = stage;
         this.systemController = systemController;
+        this.centerStack = new StackPane();
+        this.gamesPane = new VBox(16);
+        this.modePane = new VBox(14);
+        this.selectedGameLabel = new Label();
     }
 
     public Scene createScene() {
+        return new Scene(createRoot(), 960, 600);
+    }
+
+    public Parent createRoot() {
         Label title = new Label("Touch Grass");
-        title.setStyle("-fx-font-size: 30px; -fx-text-fill: #f5f7ff; -fx-font-weight: 800;");
+        title.setStyle("-fx-font-size: 30px; -fx-text-fill: #1f2933; -fx-font-weight: 800;");
 
         Label subtitle = new Label("Games Library");
-        subtitle.setStyle("-fx-font-size: 15px; -fx-text-fill: #9ea7d6;");
+        subtitle.setStyle("-fx-font-size: 14px; -fx-text-fill: #667085;");
 
         VBox titleBox = new VBox(4, title, subtitle);
 
         Button logoutButton = new Button("Logout");
         logoutButton.setStyle(
-                "-fx-background-color: #2f365f; -fx-text-fill: #f5f7ff; -fx-font-size: 13px;"
-                        + "-fx-font-weight: 600; -fx-background-radius: 10; -fx-padding: 9 18 9 18;");
+                "-fx-background-color: #c9d8c7; -fx-text-fill: #1f2933; -fx-font-size: 13px;"
+                        + "-fx-font-weight: 700; -fx-background-radius: 12; -fx-padding: 9 18 9 18;");
         logoutButton.setOnAction(event -> {
             LoginView loginView = new LoginView(stage, systemController);
             stage.setScene(loginView.createScene());
@@ -51,51 +65,100 @@ public final class MainLobbyView {
         topBar.setPadding(new Insets(24, 24, 16, 24));
 
         Label sectionLabel = new Label("Browse Games");
-        sectionLabel.setStyle("-fx-font-size: 18px; -fx-text-fill: #d7ddff; -fx-font-weight: 700;");
+        sectionLabel.setStyle("-fx-font-size: 18px; -fx-text-fill: #344054; -fx-font-weight: 700;");
 
-        HBox cardRow = new HBox(
-                18,
-                createGameCard("Snake", "snake"),
-                createGameCard("Pong", "pong"),
-                createGameCard("Tic-Tac-Toe", "tic-tac-toe"));
-        cardRow.setAlignment(Pos.CENTER_LEFT);
+        setupGamesPane(sectionLabel);
+        setupModePane();
 
-        VBox libraryBox = new VBox(16, sectionLabel, cardRow);
-        libraryBox.setPadding(new Insets(0, 24, 24, 24));
-        libraryBox.setAlignment(Pos.TOP_LEFT);
+        centerStack.getChildren().setAll(gamesPane, modePane);
+        showGamesPane();
 
         BorderPane root = new BorderPane();
         root.setTop(topBar);
-        root.setCenter(libraryBox);
-        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #0b0d19, #131a31, #1c2445);");
+        root.setCenter(centerStack);
+        root.setStyle("-fx-background-color: #F8F9FA;");
+        return root;
+    }
 
-        return new Scene(root, 960, 600);
+    private void setupGamesPane(Label sectionLabel) {
+        FlowPane grid = new FlowPane();
+        grid.setHgap(18);
+        grid.setVgap(18);
+        grid.getChildren().addAll(
+                createGameCard("Snake", "snake"),
+                createGameCard("Pong", "pong"),
+                createGameCard("Tic-Tac-Toe", "tic-tac-toe"));
+
+        gamesPane.getChildren().setAll(sectionLabel, grid);
+        gamesPane.setPadding(new Insets(0, 24, 24, 24));
+        gamesPane.setAlignment(Pos.TOP_LEFT);
+    }
+
+    private void setupModePane() {
+        Label modeTitle = new Label("Mode Selection");
+        modeTitle.setStyle("-fx-font-size: 24px; -fx-text-fill: #1f2933; -fx-font-weight: 800;");
+
+        selectedGameLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #667085; -fx-font-weight: 600;");
+
+        Button singlePlayer = createModeButton("Single Player");
+        Button localCoOp = createModeButton("Local Co-Op");
+        Button lan = createModeButton("LAN Multiplayer");
+
+        Button backButton = new Button("Back");
+        backButton.setStyle(
+                "-fx-background-color: #dce3db; -fx-text-fill: #1f2933; -fx-font-size: 13px;"
+                        + "-fx-font-weight: 700; -fx-background-radius: 12; -fx-padding: 10 20 10 20;");
+        backButton.setOnAction(event -> showGamesPane());
+
+        VBox card = new VBox(12, modeTitle, selectedGameLabel, singlePlayer, localCoOp, lan, backButton);
+        card.setPadding(new Insets(24));
+        card.setMaxWidth(360);
+        card.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 16;");
+        card.setEffect(new DropShadow(16, Color.rgb(16, 24, 40, 0.10)));
+
+        modePane.getChildren().setAll(card);
+        modePane.setAlignment(Pos.TOP_CENTER);
+        modePane.setPadding(new Insets(20, 24, 24, 24));
+    }
+
+    private Button createModeButton(String modeLabel) {
+        Button button = new Button(modeLabel);
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setStyle(
+                "-fx-background-color: #cdc6ef; -fx-text-fill: #1f2933; -fx-font-size: 14px;"
+                        + "-fx-font-weight: 700; -fx-background-radius: 12; -fx-padding: 11 16 11 16;");
+        button.setOnAction(event -> systemController.launchGame(selectedGameId, modeLabel));
+        return button;
     }
 
     private Button createGameCard(String gameTitle, String gameId) {
         Button card = new Button(gameTitle);
-        card.setPrefSize(220, 140);
+        card.setPrefSize(240, 170);
         card.setStyle(
-                "-fx-background-color: rgba(22, 29, 58, 0.95);"
-                        + "-fx-text-fill: #f5f7ff;"
-                        + "-fx-font-size: 20px;"
+                "-fx-background-color: #FFFFFF;"
+                        + "-fx-text-fill: #1f2933;"
+                        + "-fx-font-size: 22px;"
                         + "-fx-font-weight: 700;"
                         + "-fx-background-radius: 16;"
-                        + "-fx-border-radius: 16;"
-                        + "-fx-border-color: rgba(122, 141, 255, 0.3);"
-                        + "-fx-border-width: 1.2;");
-        card.setOnAction(event -> showModeSelection(gameId));
+                        + "-fx-padding: 12 12 12 12;");
+        card.setEffect(new DropShadow(14, Color.rgb(16, 24, 40, 0.10)));
+        card.setOnAction(event -> showModePane(gameTitle, gameId));
         return card;
     }
 
-    private void showModeSelection(String gameId) {
-        List<String> modes = List.of("Single Player", "Local Co-Op", "LAN Multiplayer");
-        ChoiceDialog<String> modeDialog = new ChoiceDialog<>(modes.get(0), modes);
-        modeDialog.setTitle("Select Mode");
-        modeDialog.setHeaderText("Choose your session mode");
-        modeDialog.setContentText("Mode:");
+    private void showModePane(String gameTitle, String gameId) {
+        selectedGameId = gameId;
+        selectedGameLabel.setText("Selected Game: " + gameTitle);
+        gamesPane.setVisible(false);
+        gamesPane.setManaged(false);
+        modePane.setVisible(true);
+        modePane.setManaged(true);
+    }
 
-        Optional<String> selectedMode = modeDialog.showAndWait();
-        selectedMode.ifPresent(mode -> systemController.launchGame(gameId, mode));
+    private void showGamesPane() {
+        modePane.setVisible(false);
+        modePane.setManaged(false);
+        gamesPane.setVisible(true);
+        gamesPane.setManaged(true);
     }
 }

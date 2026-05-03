@@ -1,6 +1,7 @@
 package com.touchgrass.bl;
 
 import com.touchgrass.ui.GameView;
+import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public final class SystemController {
@@ -21,7 +22,14 @@ public final class SystemController {
     public void launchGame(String gameId, String mode) {
         Session session = gameFactory.createSession(gameId, normalizeMode(mode));
         GameView gameView = new GameView(stage, this, session);
-        stage.setScene(gameView.createScene());
+        Scene scene = stage.getScene();
+        if (scene == null) {
+            stage.setScene(gameView.createScene());
+            scene = stage.getScene();
+        } else {
+            scene.setRoot(gameView.createRoot());
+            gameView.bindToScene(scene);
+        }
         session.start();
         gameView.startGameLoop();
     }
