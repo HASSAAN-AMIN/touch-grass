@@ -47,7 +47,7 @@ public class AccountManager {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Authentication failed due to SQL error: " + e.getMessage());
+            System.err.println("Database Error: " + e.getMessage());
             return false;
         }
     }
@@ -93,13 +93,13 @@ public class AccountManager {
                 return true;
             } catch (SQLException e) {
                 connection.rollback();
-                System.err.println("Registration transaction failed due to SQL error: " + e.getMessage());
+                System.err.println("Database Error: " + e.getMessage());
                 return false;
             } finally {
                 connection.setAutoCommit(initialAutoCommit);
             }
         } catch (SQLException e) {
-            System.err.println("Registration failed due to SQL error: " + e.getMessage());
+            System.err.println("Database Error: " + e.getMessage());
             return false;
         }
     }

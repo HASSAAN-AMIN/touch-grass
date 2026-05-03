@@ -10,6 +10,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
@@ -150,9 +151,10 @@ public final class NetworkSession extends Session {
                 }
                 notifyConnected();
                 startHostCommandLoop();
+            } catch (SocketException e) {
+                handleNetworkFailure("Host socket error", e);
             } catch (IOException e) {
-                notifyError("Host connection failed: " + e.getMessage());
-                end();
+                handleNetworkFailure("Host connection failed", e);
             }
         });
     }
@@ -168,9 +170,10 @@ public final class NetworkSession extends Session {
                 initializeStreams(socket);
                 notifyConnected();
                 startClientStateLoop();
+            } catch (SocketException e) {
+                handleNetworkFailure("Join socket error", e);
             } catch (IOException e) {
-                notifyError("Join connection failed: " + e.getMessage());
-                end();
+                handleNetworkFailure("Join connection failed", e);
             }
         });
     }
@@ -183,8 +186,10 @@ public final class NetworkSession extends Session {
             try {
                 outputStream.writeObject(cmd);
                 outputStream.flush();
+            } catch (SocketException e) {
+                handleNetworkFailure("Unable to send command", e);
             } catch (IOException e) {
-                notifyError("Unable to send command: " + e.getMessage());
+                handleNetworkFailure("Unable to send command", e);
             }
         }
     }
@@ -197,8 +202,10 @@ public final class NetworkSession extends Session {
             try {
                 outputStream.writeObject(gameState);
                 outputStream.flush();
+            } catch (SocketException e) {
+                handleNetworkFailure("Unable to send game state", e);
             } catch (IOException e) {
-                notifyError("Unable to send game state: " + e.getMessage());
+                handleNetworkFailure("Unable to send game state", e);
             }
         }
     }
@@ -232,11 +239,15 @@ public final class NetworkSession extends Session {
                         incomingCommands.offer(command);
                     }
                 }
+            } catch (SocketException e) {
+                if (running) {
+                    handleNetworkFailure("Host command loop socket closed", e);
+                }
+                return;
             } catch (IOException | ClassNotFoundException e) {
                 if (running) {
-                    notifyError("Host command loop stopped: " + e.getMessage());
+                    handleNetworkFailure("Host command loop stopped", e);
                 }
-                end();
                 return;
             }
         }
@@ -251,11 +262,15 @@ public final class NetworkSession extends Session {
                 } else if (payload instanceof InputCommand command) {
                     incomingCommands.offer(command);
                 }
+            } catch (SocketException e) {
+                if (running) {
+                    handleNetworkFailure("Client state loop socket closed", e);
+                }
+                return;
             } catch (IOException | ClassNotFoundException e) {
                 if (running) {
-                    notifyError("Client state loop stopped: " + e.getMessage());
+                    handleNetworkFailure("Client state loop stopped", e);
                 }
-                end();
                 return;
             }
         }
@@ -268,10 +283,15 @@ public final class NetworkSession extends Session {
     }
 
     private void notifyError(String message) {
-        System.err.println(message);
+        System.err.println("Network Error: " + message);
         if (onError != null) {
             onError.accept(message);
         }
+    }
+
+    private void handleNetworkFailure(String context, Exception exception) {
+        notifyError(context + ": " + exception.getMessage());
+        end();
     }
 
     private void closeQuietly(Closeable resource) {

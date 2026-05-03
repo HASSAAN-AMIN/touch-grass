@@ -24,7 +24,6 @@ import java.net.UnknownHostException;
 import java.util.List;
 
 public final class MainLobbyView {
-    private final Stage stage;
     private final SystemController systemController;
     private final StackPane centerStack;
     private final VBox gamesPane;
@@ -38,7 +37,6 @@ public final class MainLobbyView {
     private String selectedGameTitle;
 
     public MainLobbyView(Stage stage, SystemController systemController) {
-        this.stage = stage;
         this.systemController = systemController;
         this.centerStack = new StackPane();
         this.gamesPane = new VBox(16);
@@ -68,10 +66,7 @@ public final class MainLobbyView {
                 "-fx-background-color: linear-gradient(to right, #B8E1DD, #D5B9FF);"
                         + "-fx-text-fill: #1F2937; -fx-font-size: 13px;"
                         + "-fx-font-weight: 700; -fx-background-radius: 14; -fx-padding: 9 18 9 18;");
-        logoutButton.setOnAction(event -> {
-            LoginView loginView = new LoginView(stage, systemController);
-            stage.setScene(loginView.createScene());
-        });
+        logoutButton.setOnAction(event -> systemController.handleLogout());
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);

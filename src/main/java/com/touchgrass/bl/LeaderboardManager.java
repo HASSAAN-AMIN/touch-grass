@@ -45,7 +45,7 @@ public final class LeaderboardManager {
                 return stmt.executeUpdate() > 0;
             }
         } catch (SQLException e) {
-            System.err.println("Unable to insert score due to SQL error: " + e.getMessage());
+            System.err.println("Database Error: " + e.getMessage());
             return false;
         }
     }
@@ -65,7 +65,7 @@ public final class LeaderboardManager {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Unable to fetch top scores due to SQL error: " + e.getMessage());
+            System.err.println("Database Error: " + e.getMessage());
         }
         return topScores;
     }

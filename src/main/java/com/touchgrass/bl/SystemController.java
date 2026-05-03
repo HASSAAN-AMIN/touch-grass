@@ -1,6 +1,7 @@
 package com.touchgrass.bl;
 
 import com.touchgrass.ui.GameView;
+import com.touchgrass.ui.LoginView;
 import com.touchgrass.ui.MainLobbyView;
 import javafx.application.Platform;
 import javafx.scene.Scene;
@@ -15,6 +16,7 @@ public final class SystemController {
     private final GameFactory gameFactory;
     private final LeaderboardManager leaderboardManager;
     private String currentUsername;
+    private Session activeSession;
 
     public SystemController(Stage stage) {
         this.stage = stage;
@@ -79,13 +81,26 @@ public final class SystemController {
         Scene scene = stage.getScene();
         if (scene == null) {
             stage.setScene(mainLobbyView.createScene());
+            activeSession = null;
             return;
         }
         scene.setRoot(mainLobbyView.createRoot());
+        activeSession = null;
     }
 
     public List<String> getTopScores() {
         return leaderboardManager.getTopScores();
+    }
+
+    public void handleLogout() {
+        if (activeSession != null) {
+            activeSession.end();
+            activeSession = null;
+        }
+        currentUsername = null;
+
+        LoginView loginView = new LoginView(stage, this);
+        stage.setScene(loginView.createScene());
     }
 
     private String normalizeMode(String mode) {
@@ -98,6 +113,7 @@ public final class SystemController {
     }
 
     private void transitionToGameView(String gameId, Session session) {
+        activeSession = session;
         GameView gameView = new GameView(stage, this, gameId, session);
         Scene scene = stage.getScene();
         if (scene == null) {
