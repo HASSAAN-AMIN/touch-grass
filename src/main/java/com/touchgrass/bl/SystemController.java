@@ -2,10 +2,12 @@ package com.touchgrass.bl;
 
 import com.touchgrass.ui.GameView;
 import com.touchgrass.ui.MainLobbyView;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public final class SystemController {
+    private static final int LAN_PORT = 8080;
     private final Stage stage;
     private final AccountManager accountManager;
     private final GameFactory gameFactory;
@@ -31,17 +33,36 @@ public final class SystemController {
 
     public void launchGame(String gameId, String mode) {
         Session session = gameFactory.createSession(gameId, normalizeMode(mode));
-        GameView gameView = new GameView(stage, this, gameId, session);
-        Scene scene = stage.getScene();
-        if (scene == null) {
-            stage.setScene(gameView.createScene());
-            scene = stage.getScene();
-        } else {
-            scene.setRoot(gameView.createRoot());
-            gameView.bindToScene(scene);
-        }
+        transitionToGameView(gameId, session);
         session.start();
-        gameView.startGameLoop();
+    }
+
+    public void hostLanGame(String gameId) {
+        Session session = gameFactory.createSession(gameId, "LAN");
+        if (!(session instanceof NetworkSession networkSession)) {
+            return;
+        }
+        networkSession.setHost(true);
+        networkSession.setOnConnected(connectedSession -> Platform.runLater(() -> {
+            transitionToGameView(gameId, connectedSession);
+            connectedSession.start();
+        }));
+        networkSession.setOnError(message -> System.err.println("Host LAN error: " + message));
+        networkSession.hostGame(LAN_PORT);
+    }
+
+    public void joinLanGame(String gameId, String ipAddress) {
+        Session session = gameFactory.createSession(gameId, "LAN");
+        if (!(session instanceof NetworkSession networkSession)) {
+            return;
+        }
+        networkSession.setHost(false);
+        networkSession.setOnConnected(connectedSession -> Platform.runLater(() -> {
+            transitionToGameView(gameId, connectedSession);
+            connectedSession.start();
+        }));
+        networkSession.setOnError(message -> System.err.println("Join LAN error: " + message));
+        networkSession.joinGame(ipAddress, LAN_PORT);
     }
 
     public void handleGameOver(String gameId, int finalScore, boolean saveScore) {
@@ -68,5 +89,18 @@ public final class SystemController {
             case "LAN Multiplayer" -> "LAN";
             default -> mode;
         };
+    }
+
+    private void transitionToGameView(String gameId, Session session) {
+        GameView gameView = new GameView(stage, this, gameId, session);
+        Scene scene = stage.getScene();
+        if (scene == null) {
+            stage.setScene(gameView.createScene());
+            scene = stage.getScene();
+        } else {
+            scene.setRoot(gameView.createRoot());
+            gameView.bindToScene(scene);
+        }
+        gameView.startGameLoop();
     }
 }

@@ -10,14 +10,14 @@ import java.sql.SQLException;
 public final class DatabaseConnection {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/touchgrass";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "password";
+    private static final String PASSWORD = "5796";
 
     private static volatile DatabaseConnection instance;
     private Connection connection;
 
     private DatabaseConnection() {
         try {
-            this.connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            this.connection = DriverManager.getConnection(DB_URL, DB_USER, PASSWORD);
         } catch (SQLException e) {
             throw new IllegalStateException("Unable to establish database connection.", e);
         }
@@ -37,7 +37,7 @@ public final class DatabaseConnection {
     public Connection getConnection() {
         try {
             if (connection == null || connection.isClosed()) {
-                connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+                connection = DriverManager.getConnection(DB_URL, DB_USER, PASSWORD);
             }
             return connection;
         } catch (SQLException e) {

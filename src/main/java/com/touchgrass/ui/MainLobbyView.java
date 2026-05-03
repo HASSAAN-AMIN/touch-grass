@@ -7,6 +7,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -14,9 +15,12 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public final class MainLobbyView {
     private final Stage stage;
@@ -24,8 +28,12 @@ public final class MainLobbyView {
     private final StackPane centerStack;
     private final VBox gamesPane;
     private final VBox modePane;
+    private final VBox lanPane;
     private final Label selectedGameLabel;
+    private final Label lanStatusLabel;
+    private final TextField lanIpField;
     private String selectedGameId;
+    private String selectedGameTitle;
 
     public MainLobbyView(Stage stage, SystemController systemController) {
         this.stage = stage;
@@ -33,7 +41,10 @@ public final class MainLobbyView {
         this.centerStack = new StackPane();
         this.gamesPane = new VBox(16);
         this.modePane = new VBox(14);
+        this.lanPane = new VBox(14);
         this.selectedGameLabel = new Label();
+        this.lanStatusLabel = new Label();
+        this.lanIpField = new TextField();
     }
 
     public Scene createScene() {
@@ -70,8 +81,9 @@ public final class MainLobbyView {
 
         setupGamesPane(sectionLabel);
         setupModePane();
+        setupLanPane();
 
-        centerStack.getChildren().setAll(gamesPane, modePane);
+        centerStack.getChildren().setAll(gamesPane, modePane, lanPane);
         showGamesPane();
 
         BorderPane root = new BorderPane();
@@ -104,6 +116,7 @@ public final class MainLobbyView {
         Button singlePlayer = createModeButton("Single Player");
         Button localCoOp = createModeButton("Local Co-Op");
         Button lan = createModeButton("LAN Multiplayer");
+        lan.setOnAction(event -> showLanChoicePane());
 
         Button backButton = new Button("Back");
         backButton.setStyle(
@@ -121,6 +134,19 @@ public final class MainLobbyView {
         modePane.getChildren().setAll(card);
         modePane.setAlignment(Pos.TOP_CENTER);
         modePane.setPadding(new Insets(20, 24, 24, 24));
+    }
+
+    private void setupLanPane() {
+        lanStatusLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #64748B; -fx-font-weight: 600;");
+        lanIpField.setPromptText("Host IP Address");
+        lanIpField.setMaxWidth(260);
+        lanIpField.setStyle(
+                "-fx-background-color: #FFFFFF; -fx-text-fill: #1F2937; -fx-prompt-text-fill: #9CA3AF;"
+                        + "-fx-font-size: 13px; -fx-background-radius: 10; -fx-padding: 9 12 9 12;");
+
+        lanPane.setAlignment(Pos.TOP_CENTER);
+        lanPane.setPadding(new Insets(20, 24, 24, 24));
+        showLanChoicePane();
     }
 
     private Button createModeButton(String modeLabel) {
@@ -159,17 +185,144 @@ public final class MainLobbyView {
 
     private void showModePane(String gameTitle, String gameId) {
         selectedGameId = gameId;
+        selectedGameTitle = gameTitle;
         selectedGameLabel.setText("Selected Game: " + gameTitle);
         gamesPane.setVisible(false);
         gamesPane.setManaged(false);
         modePane.setVisible(true);
         modePane.setManaged(true);
+        lanPane.setVisible(false);
+        lanPane.setManaged(false);
     }
 
     private void showGamesPane() {
         modePane.setVisible(false);
         modePane.setManaged(false);
+        lanPane.setVisible(false);
+        lanPane.setManaged(false);
         gamesPane.setVisible(true);
         gamesPane.setManaged(true);
+    }
+
+    private void showLanChoicePane() {
+        Label title = new Label("LAN Multiplayer");
+        title.setStyle("-fx-font-size: 24px; -fx-text-fill: #1f2933; -fx-font-weight: 800;");
+
+        Label gameLabel = new Label("Selected Game: " + (selectedGameTitle == null ? "-" : selectedGameTitle));
+        gameLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #667085; -fx-font-weight: 600;");
+
+        Button hostButton = createLanActionButton("Host Game");
+        hostButton.setOnAction(event -> showHostWaitingPane());
+
+        Button joinButton = createLanActionButton("Join Game");
+        joinButton.setOnAction(event -> showJoinPane());
+
+        Button backButton = createSecondaryButton("Back");
+        backButton.setOnAction(event -> showModeOnlyPane());
+
+        VBox card = createLanCard(title, gameLabel, hostButton, joinButton, backButton);
+        lanPane.getChildren().setAll(card);
+        showLanOnlyPane();
+    }
+
+    private void showHostWaitingPane() {
+        String localIp = resolveLocalIp();
+        Label title = new Label("Hosting LAN Match");
+        title.setStyle("-fx-font-size: 24px; -fx-text-fill: #1f2933; -fx-font-weight: 800;");
+
+        Label ipLabel = new Label("Share this IP: " + localIp);
+        ipLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #334155; -fx-font-weight: 700;");
+
+        Label waitingLabel = new Label("Waiting for player...");
+        waitingLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #64748B; -fx-font-weight: 600;");
+
+        Button backButton = createSecondaryButton("Back");
+        backButton.setOnAction(event -> showLanChoicePane());
+
+        VBox card = createLanCard(title, ipLabel, waitingLabel, backButton);
+        lanPane.getChildren().setAll(card);
+        showLanOnlyPane();
+        systemController.hostLanGame(selectedGameId);
+    }
+
+    private void showJoinPane() {
+        Label title = new Label("Join LAN Match");
+        title.setStyle("-fx-font-size: 24px; -fx-text-fill: #1f2933; -fx-font-weight: 800;");
+
+        lanStatusLabel.setText("Enter host IP to connect.");
+
+        Button connectButton = createLanActionButton("Connect");
+        connectButton.setOnAction(event -> {
+            String ip = lanIpField.getText() == null ? "" : lanIpField.getText().trim();
+            if (ip.isEmpty()) {
+                lanStatusLabel.setText("Host IP address is required.");
+                return;
+            }
+            lanStatusLabel.setText("Connecting to " + ip + "...");
+            systemController.joinLanGame(selectedGameId, ip);
+        });
+
+        Button backButton = createSecondaryButton("Back");
+        backButton.setOnAction(event -> showLanChoicePane());
+
+        VBox card = createLanCard(title, lanIpField, lanStatusLabel, connectButton, backButton);
+        lanPane.getChildren().setAll(card);
+        showLanOnlyPane();
+    }
+
+    private VBox createLanCard(javafx.scene.Node... children) {
+        VBox card = new VBox(12, children);
+        card.setPadding(new Insets(24));
+        card.setMaxWidth(420);
+        card.setAlignment(Pos.CENTER);
+        card.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 16;");
+        card.setEffect(new DropShadow(16, Color.rgb(16, 24, 40, 0.10)));
+        return card;
+    }
+
+    private Button createLanActionButton(String label) {
+        Button button = new Button(label);
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setStyle(
+                "-fx-background-color: linear-gradient(to right, #C5E4C9, #D7C7F7);"
+                        + "-fx-text-fill: #1f2933; -fx-font-size: 14px;"
+                        + "-fx-font-weight: 700; -fx-background-radius: 12; -fx-padding: 11 16 11 16;");
+        return button;
+    }
+
+    private Button createSecondaryButton(String label) {
+        Button button = new Button(label);
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setStyle(
+                "-fx-background-color: linear-gradient(to right, #D5EDE3, #E7D8FF);"
+                        + "-fx-text-fill: #1f2933; -fx-font-size: 13px;"
+                        + "-fx-font-weight: 700; -fx-background-radius: 12; -fx-padding: 10 20 10 20;");
+        return button;
+    }
+
+    private void showModeOnlyPane() {
+        gamesPane.setVisible(false);
+        gamesPane.setManaged(false);
+        lanPane.setVisible(false);
+        lanPane.setManaged(false);
+        modePane.setVisible(true);
+        modePane.setManaged(true);
+    }
+
+    private void showLanOnlyPane() {
+        gamesPane.setVisible(false);
+        gamesPane.setManaged(false);
+        modePane.setVisible(false);
+        modePane.setManaged(false);
+        lanPane.setVisible(true);
+        lanPane.setManaged(true);
+    }
+
+    private String resolveLocalIp() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            return "Unavailable";
+        }
     }
 }
