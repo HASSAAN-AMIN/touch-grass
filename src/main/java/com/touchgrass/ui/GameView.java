@@ -8,6 +8,7 @@ import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
 import com.touchgrass.bl.games.PongLogic;
 import com.touchgrass.bl.games.SnakeLogic;
+import com.touchgrass.models.GameCatalog;
 import com.touchgrass.models.TicTacToeLogic;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
@@ -489,38 +490,23 @@ public final class GameView {
     }
 
     private boolean isSnakeGame() {
-        return "snake".equalsIgnoreCase(gameId);
+        return GameCatalog.ENGINE_SNAKE.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
     }
 
     private boolean isPongGame() {
-        return "pong".equalsIgnoreCase(gameId);
+        return GameCatalog.ENGINE_PONG.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
     }
 
     private boolean isTicTacToeGame() {
-        return "tic-tac-toe".equalsIgnoreCase(gameId);
+        return GameCatalog.ENGINE_TIC_TAC_TOE.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
     }
 
     private String gameName() {
-        if (isSnakeGame()) {
-            return "SNAKE";
-        }
-        if (isPongGame()) {
-            return "PONG";
-        }
-        if (isTicTacToeGame()) {
-            return "TIC-TAC-TOE";
-        }
-        return "GAME";
+        return GameCatalog.getById(gameId).title().toUpperCase();
     }
 
     private String gameNeon() {
-        if (isSnakeGame()) {
-            return gameNeon("snake");
-        }
-        if (isPongGame()) {
-            return gameNeon("pong");
-        }
-        return gameNeon("tic-tac-toe");
+        return GameCatalog.resolveNeon(gameId);
     }
 
     private boolean isLocalCoOpPong() {
@@ -700,12 +686,6 @@ public final class GameView {
     }
 
     private String gameNeon(String gameId) {
-        if ("snake".equalsIgnoreCase(gameId)) {
-            return "#00FF87";
-        }
-        if ("pong".equalsIgnoreCase(gameId)) {
-            return "#00E5FF";
-        }
-        return "#B44FFF";
+        return GameCatalog.resolveNeon(gameId);
     }
 }

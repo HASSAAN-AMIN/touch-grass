@@ -128,6 +128,10 @@ public final class SystemController {
         return leaderboardManager.getTopScores();
     }
 
+    public List<String> getTopScores(String gameId) {
+        return leaderboardManager.getTopScores(gameId);
+    }
+
     public void setStatusMessageListener(Consumer<String> statusMessageListener) {
         this.statusMessageListener = statusMessageListener;
     }

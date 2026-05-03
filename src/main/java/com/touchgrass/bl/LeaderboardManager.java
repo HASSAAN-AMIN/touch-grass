@@ -13,17 +13,24 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public final class LeaderboardManager {
+    private static final String ENSURE_GAME_ID_COLUMN_QUERY =
+            "ALTER TABLE Score ADD COLUMN gameId VARCHAR(64) NOT NULL DEFAULT 'snake'";
     private static final String FIND_PROFILE_QUERY =
             "SELECT p.profileId FROM PlayerProfile p INNER JOIN Account a ON p.accountId = a.accountId WHERE a.username = ? LIMIT 1";
     private static final String INSERT_SCORE_QUERY =
-            "INSERT INTO Score (scoreId, profileId, pointsValue, dateAchieved) VALUES (?, ?, ?, ?)";
+            "INSERT INTO Score (scoreId, profileId, gameId, pointsValue, dateAchieved) VALUES (?, ?, ?, ?, ?)";
     private static final String TOP_SCORES_QUERY =
             "SELECT a.username, s.pointsValue "
                     + "FROM Score s "
                     + "INNER JOIN PlayerProfile p ON s.profileId = p.profileId "
                     + "INNER JOIN Account a ON p.accountId = a.accountId "
+                    + "WHERE s.gameId = ? "
                     + "ORDER BY s.pointsValue DESC "
                     + "LIMIT 10";
+
+    public LeaderboardManager() {
+        ensureGameIdColumn();
+    }
 
     public boolean insertScore(String username, String gameId, int scoreValue) {
         if (isNullOrBlank(username) || isNullOrBlank(gameId) || scoreValue < 0) {
@@ -40,8 +47,9 @@ public final class LeaderboardManager {
             try (PreparedStatement stmt = connection.prepareStatement(INSERT_SCORE_QUERY)) {
                 stmt.setString(1, UUID.randomUUID().toString());
                 stmt.setString(2, profileId);
-                stmt.setInt(3, scoreValue);
-                stmt.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
+                stmt.setString(3, gameId);
+                stmt.setInt(4, scoreValue);
+                stmt.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
                 return stmt.executeUpdate() > 0;
             }
         } catch (SQLException | IllegalStateException e) {
@@ -50,12 +58,16 @@ public final class LeaderboardManager {
         }
     }
 
-    public List<String> getTopScores() {
+    public List<String> getTopScores(String gameId) {
         List<String> topScores = new ArrayList<>();
+        if (isNullOrBlank(gameId)) {
+            return topScores;
+        }
         try {
             Connection connection = DatabaseConnection.getInstance().getConnection();
-            try (PreparedStatement stmt = connection.prepareStatement(TOP_SCORES_QUERY);
-                 ResultSet rs = stmt.executeQuery()) {
+            try (PreparedStatement stmt = connection.prepareStatement(TOP_SCORES_QUERY)) {
+                stmt.setString(1, gameId);
+                try (ResultSet rs = stmt.executeQuery()) {
                 int rank = 1;
                 while (rs.next()) {
                     String username = rs.getString("username");
@@ -63,11 +75,16 @@ public final class LeaderboardManager {
                     topScores.add(rank + ". " + username + " - " + points + " pts");
                     rank++;
                 }
+                }
             }
         } catch (SQLException | IllegalStateException e) {
             System.err.println("Database Error: " + e.getMessage());
         }
         return topScores;
+    }
+
+    public List<String> getTopScores() {
+        return getTopScores("snake");
     }
 
     private String findProfileId(Connection connection, String username) throws SQLException {
@@ -84,5 +101,23 @@ public final class LeaderboardManager {
 
     private boolean isNullOrBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private void ensureGameIdColumn() {
+        try {
+            Connection connection = DatabaseConnection.getInstance().getConnection();
+            try (PreparedStatement stmt = connection.prepareStatement(ENSURE_GAME_ID_COLUMN_QUERY)) {
+                stmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            String message = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            if (!message.contains("duplicate column")
+                    && !message.contains("already exists")
+                    && !message.contains("1060")) {
+                System.err.println("Database Error: " + e.getMessage());
+            }
+        } catch (IllegalStateException e) {
+            System.err.println("Database Error: " + e.getMessage());
+        }
     }
 }

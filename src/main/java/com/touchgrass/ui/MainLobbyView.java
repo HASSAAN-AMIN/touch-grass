@@ -2,6 +2,7 @@ package com.touchgrass.ui;
 
 import com.touchgrass.bl.SystemController;
 import com.touchgrass.bl.UiSettings;
+import com.touchgrass.models.GameCatalog;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -29,11 +30,11 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class MainLobbyView {
     private static final String[] DAILY_TIPS = {
-            "Tip: Use LAN mode with host-authoritative Pong sessions.",
-            "Tip: Snake speed scales up as your score increases.",
-            "Tip: Save scores after game over to rank in leaderboard.",
-            "Tip: Toggle theme and accent in settings for custom look.",
-            "Tip: Local Co-Op Pong maps both players to one keyboard."
+            "Tip: Every game has a dedicated leaderboard.",
+            "Tip: Snake variants share movement skills but have separate rankings.",
+            "Tip: Use Local Co-Op for split-keyboard Pong sessions.",
+            "Tip: LAN mode runs on port 8080 with host-authoritative sync.",
+            "Tip: Toggle theme and accent in settings for quick visual tuning."
     };
 
     private final Stage stage;
@@ -50,6 +51,7 @@ public final class MainLobbyView {
     private final TextField lanIpField;
     private String selectedGameId;
     private String selectedGameTitle;
+    private String leaderboardGameId;
 
     public MainLobbyView(Stage stage, SystemController systemController) {
         this.stage = stage;
@@ -64,6 +66,9 @@ public final class MainLobbyView {
         this.lanStatusLabel = new Label();
         this.globalStatusLabel = new Label();
         this.lanIpField = new TextField();
+        this.selectedGameId = GameCatalog.GAMES.get(0).gameId();
+        this.selectedGameTitle = GameCatalog.GAMES.get(0).title();
+        this.leaderboardGameId = this.selectedGameId;
     }
 
     public Scene createScene() {
@@ -81,19 +86,18 @@ public final class MainLobbyView {
 
         Label title = new Label("TOUCH GRASS");
         title.setStyle("-fx-font-size: 30px; -fx-font-weight: 900; -fx-letter-spacing: 2.8px; -fx-text-fill: " + primaryText(darkTheme) + ";");
-        title.setEffect(new DropShadow(20, Color.web(gameNeon("snake"), 0.34)));
+        title.setEffect(new DropShadow(18, Color.web("#00E5FF", darkTheme ? 0.30 : 0.16)));
 
-        Label subtitle = new Label("DARK NEON ARCADE LOUNGE");
+        Label subtitle = new Label("SCALABLE ARCADE HUB");
         subtitle.setStyle(overlineStyle(darkTheme));
 
         Label tipLabel = new Label(pickTip());
         tipLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: " + secondaryText(darkTheme) + ";");
 
         globalStatusLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: " + danger(darkTheme) + ";");
-
         VBox titleBox = new VBox(4, title, subtitle, tipLabel, globalStatusLabel);
 
-        Button leaderboardButton = createNavButton("LEADERBOARD", darkTheme, event -> showLeaderboardPane());
+        Button leaderboardButton = createNavButton("LEADERBOARD", darkTheme, event -> showLeaderboardPane(leaderboardGameId));
         Button settingsButton = createNavButton("SETTINGS", darkTheme, event -> showSettingsPane());
         Button logoutButton = createNavButton("LOGOUT", darkTheme, event -> systemController.handleLogout());
 
@@ -124,10 +128,16 @@ public final class MainLobbyView {
         Label overline = new Label("CHOOSE YOUR GAME");
         overline.setStyle(overlineStyle(darkTheme));
 
-        VBox gameRows = new VBox(12,
-                createGameRow("🐍", "Snake", "snake", "Arcade survival", darkTheme),
-                createGameRow("🏓", "Pong", "pong", "Single, local co-op, and LAN", darkTheme),
-                createGameRow("❌", "Tic-Tac-Toe", "tic-tac-toe", "Strategic turn-based rounds", darkTheme));
+        Button featuredLeaderboard = createModeButton(
+                "OPEN LEADERBOARD FOR " + GameCatalog.getById(leaderboardGameId).title().toUpperCase(),
+                GameCatalog.resolveNeon(leaderboardGameId),
+                darkTheme,
+                event -> showLeaderboardPane(leaderboardGameId));
+
+        VBox gameRows = new VBox(12);
+        for (GameCatalog.GameDescriptor game : GameCatalog.GAMES) {
+            gameRows.getChildren().add(createGameRow(game, darkTheme));
+        }
 
         ScrollPane scrollPane = new ScrollPane(gameRows);
         scrollPane.setFitToWidth(true);
@@ -136,10 +146,10 @@ public final class MainLobbyView {
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
 
-        VBox shellCard = new VBox(12, overline, scrollPane);
+        VBox shellCard = new VBox(12, overline, featuredLeaderboard, scrollPane);
         shellCard.setPadding(new Insets(18));
-        shellCard.setMaxWidth(880);
-        shellCard.setPrefHeight(438);
+        shellCard.setMaxWidth(900);
+        shellCard.setPrefHeight(448);
         shellCard.setStyle("-fx-background-color: " + cardSurface(darkTheme) + ";"
                 + "-fx-background-radius: 24;"
                 + "-fx-border-radius: 24;"
@@ -152,20 +162,20 @@ public final class MainLobbyView {
         gamesPane.setPadding(new Insets(8, 24, 24, 24));
     }
 
-    private HBox createGameRow(String emoji, String title, String gameId, String subtitle, boolean darkTheme) {
-        String neon = gameNeon(gameId);
+    private HBox createGameRow(GameCatalog.GameDescriptor game, boolean darkTheme) {
+        String neon = game.neonColor();
 
-        Label icon = new Label(emoji);
+        Label icon = new Label(game.icon());
         icon.setStyle("-fx-font-size: 38px;");
         icon.setEffect(new DropShadow(20, Color.web(neon, 0.65)));
 
-        Label titleLabel = new Label(title);
+        Label titleLabel = new Label(game.title());
         titleLabel.setStyle("-fx-font-size: 26px; -fx-font-weight: 900; -fx-text-fill: " + primaryText(darkTheme) + ";");
 
-        Label subtitleLabel = new Label(subtitle);
+        Label subtitleLabel = new Label(game.subtitle());
         subtitleLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + secondaryText(darkTheme) + ";");
 
-        Label tag = new Label("ARCADE");
+        Label tag = new Label(game.engineId().toUpperCase().replace('-', ' '));
         tag.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-letter-spacing: 1.5px;"
                 + "-fx-text-fill: " + neon + ";"
                 + "-fx-background-color: transparent;"
@@ -176,11 +186,18 @@ public final class MainLobbyView {
 
         VBox details = new VBox(6, titleLabel, subtitleLabel, tag);
 
-        Button playButton = createModeButton("SELECT MODE", neon, darkTheme, event -> showModePane(title, gameId));
+        Button playButton = createModeButton("SELECT MODE", neon, darkTheme, event -> showModePane(game.title(), game.gameId()));
+        Button boardButton = createGhostButton("VIEW BOARD", darkTheme, event -> {
+            leaderboardGameId = game.gameId();
+            showLeaderboardPane(game.gameId());
+        });
+
+        VBox actions = new VBox(8, playButton, boardButton);
+        actions.setAlignment(Pos.CENTER_RIGHT);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox row = new HBox(14, icon, details, spacer, playButton);
+        HBox row = new HBox(14, icon, details, spacer, actions);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(14, 16, 14, 14));
         row.setStyle(rowStyle(neon, darkTheme, false));
@@ -197,6 +214,7 @@ public final class MainLobbyView {
     }
 
     private void setupModePane(boolean darkTheme) {
+        String neon = GameCatalog.resolveNeon(selectedGameId);
         Label overline = new Label("MODE SELECT");
         overline.setStyle(overlineStyle(darkTheme));
 
@@ -205,13 +223,13 @@ public final class MainLobbyView {
 
         selectedGameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: " + secondaryText(darkTheme) + ";");
 
-        String neon = gameNeon(selectedGameId);
         Button singlePlayer = createModeButton("SINGLE PLAYER", neon, darkTheme, event -> systemController.launchGame(selectedGameId, "Single Player"));
         Button localCoOp = createModeButton("LOCAL CO-OP", neon, darkTheme, event -> systemController.launchGame(selectedGameId, "Local Co-Op"));
         Button lan = createModeButton("LAN MULTIPLAYER", gameNeon("pong"), darkTheme, event -> showLanChoicePane());
+        Button viewBoard = createModeButton("VIEW LEADERBOARD", neon, darkTheme, event -> showLeaderboardPane(selectedGameId));
         Button back = createGhostButton("BACK", darkTheme, event -> showGamesPane());
 
-        VBox card = new VBox(12, overline, heading, selectedGameLabel, singlePlayer, localCoOp, lan, back);
+        VBox card = new VBox(12, overline, heading, selectedGameLabel, singlePlayer, localCoOp, lan, viewBoard, back);
         card.setPadding(new Insets(24));
         card.setMaxWidth(440);
         card.setStyle("-fx-background-color: " + cardSurface(darkTheme) + ";"
@@ -219,7 +237,7 @@ public final class MainLobbyView {
                 + "-fx-border-radius: 24;"
                 + "-fx-border-width: 1.2;"
                 + "-fx-border-color: " + borderColor(darkTheme) + ";");
-        card.setEffect(new DropShadow(30, Color.web(gameNeon("pong"), 0.16)));
+        card.setEffect(new DropShadow(30, Color.web(neon, 0.16)));
 
         modePane.getChildren().setAll(card);
         modePane.setAlignment(Pos.TOP_CENTER);
@@ -250,20 +268,38 @@ public final class MainLobbyView {
         leaderboardPane.setPadding(new Insets(20, 24, 24, 24));
         leaderboardPane.setVisible(false);
         leaderboardPane.setManaged(false);
-        rebuildLeaderboardPane(darkTheme);
+        rebuildLeaderboardPane(darkTheme, leaderboardGameId);
     }
 
-    private void rebuildLeaderboardPane(boolean darkTheme) {
+    private void rebuildLeaderboardPane(boolean darkTheme, String gameId) {
+        GameCatalog.GameDescriptor game = GameCatalog.getById(gameId);
+        String neon = game.neonColor();
+
         Label overline = new Label("TOP SCORES");
         overline.setStyle(overlineStyle(darkTheme));
 
-        Label heading = new Label("LEADERBOARD");
+        Label heading = new Label(game.title().toUpperCase() + " LEADERBOARD");
         heading.setStyle("-fx-font-size: 22px; -fx-font-weight: 900; -fx-letter-spacing: 2px; -fx-text-fill: " + primaryText(darkTheme) + ";");
 
+        HBox tabs = new HBox(6);
+        tabs.setAlignment(Pos.CENTER_LEFT);
+        for (GameCatalog.GameDescriptor descriptor : GameCatalog.GAMES) {
+            Button tab = createModeButton(
+                    descriptor.title().toUpperCase(),
+                    descriptor.neonColor(),
+                    darkTheme,
+                    event -> {
+                        leaderboardGameId = descriptor.gameId();
+                        showLeaderboardPane(descriptor.gameId());
+                    });
+            tab.setStyle(modeButtonStyle(descriptor.neonColor(), darkTheme, descriptor.gameId().equals(leaderboardGameId)));
+            tabs.getChildren().add(tab);
+        }
+
         VBox rows = new VBox(8);
-        List<String> topScores = systemController.getTopScores();
+        List<String> topScores = systemController.getTopScores(gameId);
         if (topScores.isEmpty()) {
-            Label empty = new Label("No scores recorded yet.");
+            Label empty = new Label("No scores recorded yet for " + game.title() + ".");
             empty.setStyle("-fx-font-size: 13px; -fx-text-fill: " + secondaryText(darkTheme) + ";");
             rows.getChildren().add(empty);
         } else {
@@ -277,19 +313,19 @@ public final class MainLobbyView {
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
-        scroll.setPrefViewportHeight(280);
+        scroll.setPrefViewportHeight(250);
 
         Button back = createGhostButton("BACK", darkTheme, event -> showGamesPane());
 
-        VBox card = new VBox(12, overline, heading, scroll, back);
+        VBox card = new VBox(12, overline, heading, tabs, scroll, back);
         card.setPadding(new Insets(24));
-        card.setMaxWidth(560);
+        card.setMaxWidth(860);
         card.setStyle("-fx-background-color: " + cardSurface(darkTheme) + ";"
                 + "-fx-background-radius: 24;"
                 + "-fx-border-radius: 24;"
                 + "-fx-border-width: 1.2;"
                 + "-fx-border-color: " + borderColor(darkTheme) + ";");
-        card.setEffect(new DropShadow(30, Color.web(gameNeon("pong"), 0.16)));
+        card.setEffect(new DropShadow(30, Color.web(neon, 0.16)));
         leaderboardPane.getChildren().setAll(card);
     }
 
@@ -415,8 +451,8 @@ public final class MainLobbyView {
     private Button createGhostButton(String label, boolean darkTheme, EventHandler<ActionEvent> action) {
         Button button = new Button(label);
         button.setMaxWidth(Double.MAX_VALUE);
-        button.setStyle("-fx-background-color: " + (darkTheme ? "rgba(10,18,40,0.68)" : "rgba(223,235,248,0.85)") + ";"
-                + "-fx-text-fill: " + secondaryText(darkTheme) + ";"
+        button.setStyle("-fx-background-color: " + (darkTheme ? "rgba(10,18,40,0.68)" : "rgba(220,232,246,0.96)") + ";"
+                + "-fx-text-fill: " + (darkTheme ? secondaryText(true) : "#2F4862") + ";"
                 + "-fx-font-size: 12px;"
                 + "-fx-font-weight: 800;"
                 + "-fx-letter-spacing: 1px;"
@@ -433,6 +469,7 @@ public final class MainLobbyView {
         selectedGameId = gameId;
         selectedGameTitle = gameTitle;
         selectedGameLabel.setText("Selected game: " + gameTitle);
+        leaderboardGameId = gameId;
         setupModePane(systemController.getUiSettings().getThemeMode() != UiSettings.ThemeMode.LIGHT);
         showPane(modePane);
     }
@@ -540,9 +577,10 @@ public final class MainLobbyView {
         showPane(lanPane);
     }
 
-    private void showLeaderboardPane() {
+    private void showLeaderboardPane(String gameId) {
+        leaderboardGameId = gameId == null ? GameCatalog.GAMES.get(0).gameId() : gameId;
         boolean darkTheme = systemController.getUiSettings().getThemeMode() != UiSettings.ThemeMode.LIGHT;
-        rebuildLeaderboardPane(darkTheme);
+        rebuildLeaderboardPane(darkTheme, leaderboardGameId);
         showPane(leaderboardPane);
     }
 
@@ -581,7 +619,7 @@ public final class MainLobbyView {
                     + "-fx-border-radius: 12;"
                     + "-fx-padding: 10 14 10 14;";
         }
-        return "-fx-background-color: " + (darkTheme ? "rgba(8,14,30,0.84)" : "rgba(248,252,255,0.90)") + ";"
+        return "-fx-background-color: " + (darkTheme ? "rgba(8,14,30,0.84)" : "rgba(242,247,255,0.96)") + ";"
                 + "-fx-text-fill: " + neon + ";"
                 + "-fx-font-size: 12px;"
                 + "-fx-font-weight: 900;"
@@ -594,7 +632,7 @@ public final class MainLobbyView {
     }
 
     private String rowStyle(String neon, boolean darkTheme, boolean hovered) {
-        return "-fx-background-color: " + (darkTheme ? "rgba(10,18,40,0.94)" : "rgba(248,252,255,0.92)") + ";"
+        return "-fx-background-color: " + (darkTheme ? "rgba(10,18,40,0.94)" : "rgba(245,249,255,0.96)") + ";"
                 + "-fx-border-color: transparent transparent transparent " + neon + ";"
                 + "-fx-border-width: 0 0 0 " + (hovered ? "4" : "3") + ";"
                 + "-fx-background-radius: 16;"
@@ -608,23 +646,23 @@ public final class MainLobbyView {
     private String appBackground(boolean darkTheme) {
         return darkTheme
                 ? "linear-gradient(to bottom right, #060D1C, #091633, #0F1B42)"
-                : "linear-gradient(to bottom right, #F0FAF5, #EEF5FF, #F1F7FF)";
+                : "linear-gradient(to bottom right, #F0FAF5, #EEF5FF, #F6FAFF)";
     }
 
     private String topBarBg(boolean darkTheme) {
-        return darkTheme ? "rgba(6,13,28,0.97)" : "rgba(240,250,245,0.96)";
+        return darkTheme ? "rgba(6,13,28,0.97)" : "rgba(236,246,255,0.98)";
     }
 
     private String cardSurface(boolean darkTheme) {
-        return darkTheme ? "rgba(10,18,40,0.94)" : "rgba(248,252,255,0.92)";
+        return darkTheme ? "rgba(10,18,40,0.94)" : "rgba(248,252,255,0.96)";
     }
 
     private String rowBg(boolean darkTheme) {
-        return darkTheme ? "rgba(8,14,30,0.82)" : "rgba(240,246,252,0.92)";
+        return darkTheme ? "rgba(8,14,30,0.82)" : "rgba(234,242,252,0.96)";
     }
 
     private String inputBg(boolean darkTheme) {
-        return darkTheme ? "#0F1D3A" : "#EEF5FF";
+        return darkTheme ? "#0F1D3A" : "#E8F0FC";
     }
 
     private String primaryText(boolean darkTheme) {
@@ -632,11 +670,11 @@ public final class MainLobbyView {
     }
 
     private String secondaryText(boolean darkTheme) {
-        return darkTheme ? "#4A6A8A" : "#607080";
+        return darkTheme ? "#4A6A8A" : "#48627A";
     }
 
     private String borderColor(boolean darkTheme) {
-        return darkTheme ? "rgba(0,184,255,0.22)" : "rgba(0,100,200,0.16)";
+        return darkTheme ? "rgba(0,184,255,0.22)" : "rgba(0,100,200,0.20)";
     }
 
     private String danger(boolean darkTheme) {
@@ -644,13 +682,7 @@ public final class MainLobbyView {
     }
 
     private String gameNeon(String gameId) {
-        if ("snake".equalsIgnoreCase(gameId)) {
-            return "#00FF87";
-        }
-        if ("pong".equalsIgnoreCase(gameId)) {
-            return "#00E5FF";
-        }
-        return "#B44FFF";
+        return GameCatalog.resolveNeon(gameId);
     }
 
     private String pickTip() {

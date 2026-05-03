@@ -4,17 +4,18 @@ import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
 import com.touchgrass.bl.games.PongLogic;
 import com.touchgrass.bl.games.SnakeLogic;
+import com.touchgrass.models.GameCatalog;
 import com.touchgrass.models.TicTacToeLogic;
 
 public final class LocalSession extends Session {
-    private final String gameId;
+    private final String engineId;
     private SnakeLogic snakeLogic;
     private PongLogic pongLogic;
     private TicTacToeLogic ticTacToeLogic;
 
     public LocalSession(String sessionId, String gameId, String mode, String p1Controls, String p2Controls) {
         super(sessionId, mode);
-        this.gameId = gameId;
+        this.engineId = GameCatalog.resolveEngineId(gameId);
         initializeGameLogic();
     }
 
@@ -99,15 +100,15 @@ public final class LocalSession extends Session {
     }
 
     private void initializeGameLogic() {
-        if ("snake".equalsIgnoreCase(gameId)) {
+        if (GameCatalog.ENGINE_SNAKE.equalsIgnoreCase(engineId)) {
             snakeLogic = new SnakeLogic();
             return;
         }
-        if ("pong".equalsIgnoreCase(gameId)) {
+        if (GameCatalog.ENGINE_PONG.equalsIgnoreCase(engineId)) {
             pongLogic = new PongLogic();
             return;
         }
-        if ("tic-tac-toe".equalsIgnoreCase(gameId)) {
+        if (GameCatalog.ENGINE_TIC_TAC_TOE.equalsIgnoreCase(engineId)) {
             ticTacToeLogic = new TicTacToeLogic();
         }
     }

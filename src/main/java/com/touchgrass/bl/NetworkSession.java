@@ -3,6 +3,7 @@ package com.touchgrass.bl;
 import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
 import com.touchgrass.bl.games.PongLogic;
+import com.touchgrass.models.GameCatalog;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -303,7 +304,7 @@ public final class NetworkSession extends Session {
     }
 
     private void initializeGameLogic() {
-        if ("pong".equalsIgnoreCase(gameId)) {
+        if (GameCatalog.ENGINE_PONG.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId))) {
             pongLogic = new PongLogic();
             currentGameState = pongLogic.toGameState();
         }
