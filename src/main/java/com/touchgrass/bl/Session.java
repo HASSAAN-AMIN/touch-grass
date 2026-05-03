@@ -1,6 +1,7 @@
 package com.touchgrass.bl;
 
 import com.touchgrass.bl.games.InputCommand;
+import com.touchgrass.bl.games.GameState;
 
 public abstract class Session {
     private String sessionId;
@@ -38,4 +39,8 @@ public abstract class Session {
     public abstract boolean isGameOver();
 
     public abstract int getScore();
+
+    public GameState getCurrentGameState() {
+        return null;
+    }
 }

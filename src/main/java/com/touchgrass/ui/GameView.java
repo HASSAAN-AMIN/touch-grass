@@ -3,7 +3,9 @@ package com.touchgrass.ui;
 import com.touchgrass.bl.LocalSession;
 import com.touchgrass.bl.Session;
 import com.touchgrass.bl.SystemController;
+import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
+import com.touchgrass.bl.games.PongLogic;
 import com.touchgrass.bl.games.SnakeLogic;
 import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
@@ -122,7 +124,7 @@ public final class GameView {
                     }
                 }
                 lastFrameTime = now;
-                if (lastLogicTickTime == 0L || now - lastLogicTickTime >= LOGIC_TICK_NS) {
+                if (shouldTickLogic(now)) {
                     activeSession.tick();
                     lastLogicTickTime = now;
                 }
@@ -146,6 +148,7 @@ public final class GameView {
         graphics.setFill(Color.web("#F8F9FA"));
         graphics.fillRect(0, 0, WIDTH, HEIGHT);
 
+        drawPongIfActive(graphics);
         drawSnakeIfActive(graphics);
 
         graphics.setFill(Color.web("#4B5563"));
@@ -169,6 +172,9 @@ public final class GameView {
             return;
         }
         if (pressedKeys.add(keyCode)) {
+            activeSession.handleInput(command, true);
+        } else if (isPongGame()) {
+            // Allow repeated directional input packets for smoother paddle motion.
             activeSession.handleInput(command, true);
         }
     }
@@ -196,6 +202,9 @@ public final class GameView {
     }
 
     private void drawSnakeIfActive(GraphicsContext graphics) {
+        if (!isSnakeGame()) {
+            return;
+        }
         if (!(activeSession instanceof LocalSession localSession)) {
             return;
         }
@@ -238,6 +247,87 @@ public final class GameView {
             graphics.setFont(Font.font("Consolas", 30));
             graphics.fillText("Game Over", startX + 154, startY + (boardHeight / 2));
         }
+    }
+
+    private void drawPongIfActive(GraphicsContext graphics) {
+        if (!isPongGame()) {
+            return;
+        }
+
+        GameState state = activeSession.getCurrentGameState();
+        if (state == null) {
+            graphics.setFill(Color.web("#64748B"));
+            graphics.setFont(Font.font("Consolas", 22));
+            graphics.fillText("Waiting for synced game state...", 280, 300);
+            return;
+        }
+
+        double boardWidth = PongLogic.FIELD_WIDTH;
+        double boardHeight = PongLogic.FIELD_HEIGHT;
+        double startX = (WIDTH - boardWidth) / 2.0;
+        double startY = (HEIGHT - boardHeight) / 2.0 + 24;
+
+        graphics.setFill(Color.web("#FFFFFF"));
+        graphics.fillRoundRect(startX - 14, startY - 14, boardWidth + 28, boardHeight + 28, 24, 24);
+
+        graphics.setFill(Color.web("#F2F5F8"));
+        graphics.fillRoundRect(startX, startY, boardWidth, boardHeight, 18, 18);
+
+        graphics.setStroke(Color.web("#B7C2D2"));
+        graphics.setLineWidth(3);
+        graphics.setLineDashes(12, 12);
+        double centerX = startX + (boardWidth / 2.0);
+        graphics.strokeLine(centerX, startY + 12, centerX, startY + boardHeight - 12);
+        graphics.setLineDashes(0);
+
+        graphics.setFill(Color.web("#7FB069"));
+        graphics.fillRoundRect(
+                startX + 24,
+                startY + state.paddle1Y(),
+                PongLogic.PADDLE_WIDTH,
+                PongLogic.PADDLE_HEIGHT,
+                10,
+                10);
+
+        graphics.setFill(Color.web("#D1B3FF"));
+        graphics.fillRoundRect(
+                startX + PongLogic.FIELD_WIDTH - 24 - PongLogic.PADDLE_WIDTH,
+                startY + state.paddle2Y(),
+                PongLogic.PADDLE_WIDTH,
+                PongLogic.PADDLE_HEIGHT,
+                10,
+                10);
+
+        graphics.setFill(Color.web("#E55934"));
+        graphics.fillRoundRect(
+                startX + state.ballX(),
+                startY + state.ballY(),
+                PongLogic.BALL_SIZE,
+                PongLogic.BALL_SIZE,
+                10,
+                10);
+
+        graphics.setFill(Color.web("#52606D"));
+        graphics.setFont(Font.font("Consolas", 22));
+        graphics.fillText(
+                state.scorePlayer1() + " : " + state.scorePlayer2(),
+                centerX - 36,
+                startY - 18);
+    }
+
+    private boolean shouldTickLogic(long now) {
+        if (isPongGame()) {
+            return true;
+        }
+        return lastLogicTickTime == 0L || now - lastLogicTickTime >= LOGIC_TICK_NS;
+    }
+
+    private boolean isSnakeGame() {
+        return "snake".equalsIgnoreCase(gameId);
+    }
+
+    private boolean isPongGame() {
+        return "pong".equalsIgnoreCase(gameId);
     }
 
     private void returnToLobby() {
