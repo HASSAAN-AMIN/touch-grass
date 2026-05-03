@@ -1,5 +1,7 @@
 package com.touchgrass.bl;
 
+import com.touchgrass.bl.games.DriftTrackLogic;
+import com.touchgrass.bl.games.DriftTrackState;
 import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
 import com.touchgrass.bl.games.PongLogic;
@@ -9,6 +11,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -27,8 +30,10 @@ public final class NetworkSession extends Session {
     private volatile ObjectOutputStream outputStream;
     private volatile ObjectInputStream inputStream;
     private volatile GameState currentGameState;
-    private final String gameId;
+    private volatile DriftTrackState currentDriftTrackState;
+    private final String engineId;
     private PongLogic pongLogic;
+    private DriftTrackLogic driftTrackLogic;
     private String hostIpAddress;
     private int port;
     private Consumer<NetworkSession> onConnected;
@@ -38,7 +43,7 @@ public final class NetworkSession extends Session {
         super(sessionId, mode);
         this.ioLock = new Object();
         this.incomingCommands = new ConcurrentLinkedQueue<>();
-        this.gameId = gameId;
+        this.engineId = GameCatalog.resolveEngineId(gameId);
         this.hostIpAddress = "127.0.0.1";
         this.port = 8080;
         initializeGameLogic();
@@ -103,37 +108,68 @@ public final class NetworkSession extends Session {
         if (!connected) {
             return;
         }
-        if (pongLogic != null && host) {
-            pongLogic.processCommand(inputCommand, 1);
-            return;
+        if (host) {
+            if (pongLogic != null) {
+                pongLogic.processCommand(inputCommand, 1);
+                return;
+            }
+            if (driftTrackLogic != null) {
+                applyDriftCommand(driftTrackLogic, inputCommand, 1);
+                return;
+            }
         }
         sendCommand(inputCommand);
     }
 
     @Override
     public void tick() {
-        if (pongLogic != null && host && connected) {
-            pongLogic.update();
-            currentGameState = pongLogic.toGameState();
-            sendState(currentGameState);
-            return;
+        if (host && connected) {
+            if (pongLogic != null) {
+                pongLogic.update();
+                currentGameState = pongLogic.toGameState();
+                sendObject(currentGameState);
+                return;
+            }
+            if (driftTrackLogic != null) {
+                driftTrackLogic.update();
+                currentDriftTrackState = driftTrackLogic.toState();
+                sendObject(currentDriftTrackState);
+                return;
+            }
         }
         syncState();
     }
 
     @Override
     public boolean isGameOver() {
+        if (driftTrackLogic != null && host) {
+            return driftTrackLogic.isGameOver();
+        }
+        if (currentDriftTrackState != null) {
+            return currentDriftTrackState.isFinished();
+        }
         return false;
     }
 
     @Override
     public int getScore() {
+        if (driftTrackLogic != null && host) {
+            return driftTrackLogic.getCombinedScore();
+        }
+        if (currentDriftTrackState != null) {
+            return Math.max(currentDriftTrackState.getPlayer1Distance(), currentDriftTrackState.getPlayer2Distance());
+        }
         return 0;
     }
 
     @Override
     public GameState getCurrentGameState() {
         return currentGameState;
+    }
+
+    @Override
+    public DriftTrackState getDriftTrackState() {
+        return currentDriftTrackState;
     }
 
     public void hostGame(int port) {
@@ -147,6 +183,9 @@ public final class NetworkSession extends Session {
                 initializeStreams(socket);
                 if (pongLogic != null) {
                     currentGameState = pongLogic.toGameState();
+                }
+                if (driftTrackLogic != null) {
+                    currentDriftTrackState = driftTrackLogic.toState();
                 }
                 notifyConnected();
                 startHostCommandLoop();
@@ -178,35 +217,7 @@ public final class NetworkSession extends Session {
     }
 
     public void sendCommand(InputCommand cmd) {
-        if (!connected || outputStream == null) {
-            return;
-        }
-        synchronized (ioLock) {
-            try {
-                outputStream.writeObject(cmd);
-                outputStream.flush();
-            } catch (SocketException e) {
-                handleNetworkFailure("Unable to send command", e);
-            } catch (IOException e) {
-                handleNetworkFailure("Unable to send command", e);
-            }
-        }
-    }
-
-    public void sendState(GameState gameState) {
-        if (!connected || outputStream == null || gameState == null) {
-            return;
-        }
-        synchronized (ioLock) {
-            try {
-                outputStream.writeObject(gameState);
-                outputStream.flush();
-            } catch (SocketException e) {
-                handleNetworkFailure("Unable to send game state", e);
-            } catch (IOException e) {
-                handleNetworkFailure("Unable to send game state", e);
-            }
-        }
+        sendObject(cmd);
     }
 
     public InputCommand pollIncomingCommand() {
@@ -215,7 +226,28 @@ public final class NetworkSession extends Session {
 
     public void syncState() {
         while (incomingCommands.poll() != null) {
-            // Drain legacy queue when no dedicated state sync is used.
+            // Drain queue when no dedicated state sync is used.
+        }
+    }
+
+    public boolean isDriftTrackEngine() {
+        return GameCatalog.ENGINE_DRIFT_TRACK.equalsIgnoreCase(engineId);
+    }
+
+    private void sendObject(Serializable payload) {
+        if (!connected || outputStream == null || payload == null) {
+            return;
+        }
+        synchronized (ioLock) {
+            try {
+                outputStream.reset();
+                outputStream.writeObject(payload);
+                outputStream.flush();
+            } catch (SocketException e) {
+                handleNetworkFailure("Unable to send payload", e);
+            } catch (IOException e) {
+                handleNetworkFailure("Unable to send payload", e);
+            }
         }
     }
 
@@ -233,6 +265,8 @@ public final class NetworkSession extends Session {
                 if (payload instanceof InputCommand command) {
                     if (pongLogic != null) {
                         pongLogic.processCommand(command, 2);
+                    } else if (driftTrackLogic != null) {
+                        applyDriftCommand(driftTrackLogic, command, 2);
                     } else {
                         incomingCommands.offer(command);
                     }
@@ -257,6 +291,8 @@ public final class NetworkSession extends Session {
                 Object payload = inputStream.readObject();
                 if (payload instanceof GameState gameState) {
                     currentGameState = gameState;
+                } else if (payload instanceof DriftTrackState driftState) {
+                    currentDriftTrackState = driftState;
                 } else if (payload instanceof InputCommand command) {
                     incomingCommands.offer(command);
                 }
@@ -304,9 +340,22 @@ public final class NetworkSession extends Session {
     }
 
     private void initializeGameLogic() {
-        if (GameCatalog.ENGINE_PONG.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId))) {
+        if (GameCatalog.ENGINE_PONG.equalsIgnoreCase(engineId)) {
             pongLogic = new PongLogic();
             currentGameState = pongLogic.toGameState();
+            return;
+        }
+        if (GameCatalog.ENGINE_DRIFT_TRACK.equalsIgnoreCase(engineId)) {
+            driftTrackLogic = new DriftTrackLogic();
+            currentDriftTrackState = driftTrackLogic.toState();
+        }
+    }
+
+    private void applyDriftCommand(DriftTrackLogic logic, InputCommand command, int playerNumber) {
+        if (command == InputCommand.LEFT) {
+            logic.steerPlayerLeft(playerNumber);
+        } else if (command == InputCommand.RIGHT) {
+            logic.steerPlayerRight(playerNumber);
         }
     }
 }

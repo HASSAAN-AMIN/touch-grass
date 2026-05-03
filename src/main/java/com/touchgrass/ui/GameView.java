@@ -4,10 +4,15 @@ import com.touchgrass.bl.LocalSession;
 import com.touchgrass.bl.Session;
 import com.touchgrass.bl.SystemController;
 import com.touchgrass.bl.UiSettings;
+import com.touchgrass.bl.games.CarRaceLogic;
+import com.touchgrass.bl.games.DriftTrackLogic;
+import com.touchgrass.bl.games.DriftTrackState;
 import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
 import com.touchgrass.bl.games.PongLogic;
+import com.touchgrass.bl.games.ShooterLogic;
 import com.touchgrass.bl.games.SnakeLogic;
+import com.touchgrass.bl.games.SudokuLogic;
 import com.touchgrass.models.GameCatalog;
 import com.touchgrass.models.TicTacToeLogic;
 import javafx.animation.AnimationTimer;
@@ -164,7 +169,7 @@ public final class GameView {
                 lastFrameTime = now;
 
                 if (shouldTickLogic(now)) {
-                    pumpLocalCoOpPongInputs();
+                    pumpDualPlayerInputs();
                     if (!paused) {
                         activeSession.tick();
                     }
@@ -207,8 +212,11 @@ public final class GameView {
         drawSnakeIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
         drawTicTacToeIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
         drawDodgerIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
-        drawTargetTapIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
         drawMazeIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+        drawCarRaceIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+        drawSudokuIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+        drawShooterIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+        drawDriftTrackIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
     }
 
     private void drawDotGrid(GraphicsContext graphics, boolean darkTheme, double width, double height) {
@@ -226,34 +234,12 @@ public final class GameView {
         UiSettings uiSettings = systemController.getUiSettings();
         hudPrimaryLabel.setText(gameName() + " - " + activeSession.getMode());
 
-        String scoreText;
-        if (isSnakeGame() && activeSession instanceof LocalSession localSession && localSession.getSnakeLogic() != null) {
-            scoreText = "SCORE " + localSession.getSnakeLogic().getScore() + " | LENGTH " + localSession.getSnakeLogic().getSnakeBody().size();
-        } else if (isPongGame()) {
-            GameState state = activeSession.getCurrentGameState();
-            scoreText = state == null
-                    ? "SYNCING..."
-                    : "P1 " + state.scorePlayer1() + "  :  P2 " + state.scorePlayer2();
-        } else if (isTicTacToeGame() && activeSession instanceof LocalSession localSession && localSession.getTicTacToeLogic() != null) {
-            TicTacToeLogic logic = localSession.getTicTacToeLogic();
-            scoreText = logic.isGameOver()
-                    ? (logic.isDraw() ? "RESULT DRAW" : "WINNER " + logic.getWinner())
-                    : "TURN " + logic.getCurrentPlayer();
-        } else if (isDodgerGame() && activeSession instanceof LocalSession localSession && localSession.getDodgerLogic() != null) {
-            scoreText = "SCORE " + localSession.getDodgerLogic().getScore();
-        } else if (isTargetTapGame() && activeSession instanceof LocalSession localSession && localSession.getTargetTapLogic() != null) {
-            int secondsLeft = Math.max(0, localSession.getTargetTapLogic().getTimerTicks() / 10);
-            scoreText = "SCORE " + localSession.getTargetTapLogic().getScore() + " | TIME " + secondsLeft + "s";
-        } else if (isMazeEscapeGame() && activeSession instanceof LocalSession localSession && localSession.getMazeEscapeLogic() != null) {
-            scoreText = "STEPS " + localSession.getMazeEscapeLogic().getSteps() + " | SCORE " + localSession.getMazeEscapeLogic().getScore();
-        } else {
-            scoreText = "SESSION ACTIVE";
-        }
+        String scoreText = buildScoreText();
         if (uiSettings.isShowFps()) {
             scoreText += " | " + Math.round(fps) + " FPS";
         }
         hudScoreLabel.setText(scoreText);
-        hudHintLabel.setText("WASD + ARROWS | P PAUSE | ESC QUIT");
+        hudHintLabel.setText(buildHintText());
 
         if (paused) {
             hudStatusLabel.setText("PAUSED");
@@ -262,6 +248,64 @@ public final class GameView {
         } else {
             hudStatusLabel.setText("");
         }
+    }
+
+    private String buildScoreText() {
+        if (isSnakeGame() && activeSession instanceof LocalSession localSession && localSession.getSnakeLogic() != null) {
+            return "SCORE " + localSession.getSnakeLogic().getScore() + " | LENGTH " + localSession.getSnakeLogic().getSnakeBody().size();
+        }
+        if (isPongGame()) {
+            GameState state = activeSession.getCurrentGameState();
+            return state == null ? "SYNCING..." : "P1 " + state.scorePlayer1() + "  :  P2 " + state.scorePlayer2();
+        }
+        if (isTicTacToeGame() && activeSession instanceof LocalSession localSession && localSession.getTicTacToeLogic() != null) {
+            TicTacToeLogic logic = localSession.getTicTacToeLogic();
+            return logic.isGameOver()
+                    ? (logic.isDraw() ? "RESULT DRAW" : "WINNER " + logic.getWinner())
+                    : "TURN " + logic.getCurrentPlayer();
+        }
+        if (isDodgerGame() && activeSession instanceof LocalSession localSession && localSession.getDodgerLogic() != null) {
+            return "SCORE " + localSession.getDodgerLogic().getScore();
+        }
+        if (isMazeEscapeGame() && activeSession instanceof LocalSession localSession && localSession.getMazeEscapeLogic() != null) {
+            return "STEPS " + localSession.getMazeEscapeLogic().getSteps() + " | SCORE " + localSession.getMazeEscapeLogic().getScore();
+        }
+        if (isCarRaceGame() && activeSession instanceof LocalSession localSession && localSession.getCarRaceLogic() != null) {
+            CarRaceLogic logic = localSession.getCarRaceLogic();
+            return "DIST " + logic.getDistance() + " | SPEED " + String.format("%.1f", logic.getScrollSpeed());
+        }
+        if (isSudokuGame() && activeSession instanceof LocalSession localSession && localSession.getSudokuLogic() != null) {
+            SudokuLogic logic = localSession.getSudokuLogic();
+            return "SCORE " + logic.getScore() + " | MISTAKES " + logic.getMistakes() + "/5 | HINTS " + logic.getHintsRemaining();
+        }
+        if (isShooterGame() && activeSession instanceof LocalSession localSession && localSession.getShooterLogic() != null) {
+            ShooterLogic logic = localSession.getShooterLogic();
+            return "SCORE " + logic.getScore() + " | LIVES " + logic.getLives();
+        }
+        if (isDriftTrackGame()) {
+            DriftTrackState state = activeSession.getDriftTrackState();
+            if (state == null) {
+                return "SYNCING...";
+            }
+            return "P1 " + state.getPlayer1Distance() + "  :  P2 " + state.getPlayer2Distance();
+        }
+        return "SESSION ACTIVE";
+    }
+
+    private String buildHintText() {
+        if (isSudokuGame()) {
+            return "CLICK CELL | 1-9 PLACE | 0/BACKSPACE CLEAR | H HINT | ESC QUIT";
+        }
+        if (isShooterGame()) {
+            return "A/D MOVE | SPACE FIRE | P PAUSE | ESC QUIT";
+        }
+        if (isCarRaceGame()) {
+            return "A/D STEER | P PAUSE | ESC QUIT";
+        }
+        if (isDriftTrackGame()) {
+            return "P1 A/D | P2 LEFT/RIGHT | ESC QUIT";
+        }
+        return "WASD + ARROWS | P PAUSE | ESC QUIT";
     }
 
     private void handleKeyPressed(KeyEvent event) {
@@ -274,8 +318,12 @@ public final class GameView {
             paused = !paused;
             return;
         }
-        if (isLocalCoOpPong()) {
-            if (isLocalCoOpPongKey(keyCode)) {
+        if (isSudokuGame() && activeSession instanceof LocalSession localSession && localSession.getSudokuLogic() != null) {
+            handleSudokuKey(localSession.getSudokuLogic(), keyCode);
+            return;
+        }
+        if (isLocalCoOpPong() || isDriftTrackGame()) {
+            if (isDualPlayerKey(keyCode)) {
                 pressedKeys.add(keyCode);
             }
             return;
@@ -293,7 +341,7 @@ public final class GameView {
 
     private void handleKeyReleased(KeyEvent event) {
         KeyCode keyCode = event.getCode();
-        if (isLocalCoOpPong()) {
+        if (isLocalCoOpPong() || isDriftTrackGame()) {
             pressedKeys.remove(keyCode);
             return;
         }
@@ -303,6 +351,30 @@ public final class GameView {
         }
         if (pressedKeys.remove(keyCode)) {
             activeSession.handleInput(command, false);
+        }
+    }
+
+    private void handleSudokuKey(SudokuLogic logic, KeyCode keyCode) {
+        switch (keyCode) {
+            case DIGIT1, NUMPAD1 -> logic.enterValue(1);
+            case DIGIT2, NUMPAD2 -> logic.enterValue(2);
+            case DIGIT3, NUMPAD3 -> logic.enterValue(3);
+            case DIGIT4, NUMPAD4 -> logic.enterValue(4);
+            case DIGIT5, NUMPAD5 -> logic.enterValue(5);
+            case DIGIT6, NUMPAD6 -> logic.enterValue(6);
+            case DIGIT7, NUMPAD7 -> logic.enterValue(7);
+            case DIGIT8, NUMPAD8 -> logic.enterValue(8);
+            case DIGIT9, NUMPAD9 -> logic.enterValue(9);
+            case DIGIT0, NUMPAD0, BACK_SPACE, DELETE -> logic.enterValue(0);
+            case H -> {
+                if (!logic.useHint()) {
+                    inlineStatusMessage = "Hint unavailable.";
+                } else {
+                    inlineStatusMessage = "Hint applied.";
+                }
+            }
+            default -> {
+            }
         }
     }
 
@@ -331,14 +403,7 @@ public final class GameView {
         double startY = (canvasHeight - boardSize) / 2.0;
         double tileSize = boardSize / SnakeLogic.GRID_WIDTH;
 
-        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
-        graphics.fillRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
-        graphics.setStroke(Color.web(gameNeon("snake"), 0.92));
-        graphics.setLineWidth(1.5);
-        graphics.strokeRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
-
-        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
-        graphics.fillRoundRect(startX, startY, boardSize, boardSize, 18, 18);
+        drawBoardFrame(graphics, startX, startY, boardSize, boardSize, gameNeon("snake"), darkTheme);
 
         graphics.setFill(Color.web(gameNeon("snake")));
         for (SnakeLogic.Cell cell : snakeLogic.getSnakeBody()) {
@@ -388,14 +453,7 @@ public final class GameView {
         double startX = (canvasWidth - drawWidth) / 2.0;
         double startY = (canvasHeight - drawHeight) / 2.0;
 
-        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
-        graphics.fillRoundRect(startX - 16, startY - 16, drawWidth + 32, drawHeight + 32, 24, 24);
-        graphics.setStroke(Color.web(gameNeon("pong"), 0.90));
-        graphics.setLineWidth(1.5);
-        graphics.strokeRoundRect(startX - 16, startY - 16, drawWidth + 32, drawHeight + 32, 24, 24);
-
-        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
-        graphics.fillRoundRect(startX, startY, drawWidth, drawHeight, 18, 18);
+        drawBoardFrame(graphics, startX, startY, drawWidth, drawHeight, gameNeon("pong"), darkTheme);
 
         graphics.setStroke(Color.web(gameNeon("pong"), 0.60));
         graphics.setLineWidth(Math.max(2, 3 * scale));
@@ -454,14 +512,7 @@ public final class GameView {
         double startY = (canvasHeight - boardSize) / 2.0;
         double cellSize = boardSize / TicTacToeLogic.GRID_SIZE;
 
-        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
-        graphics.fillRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
-        graphics.setStroke(Color.web(gameNeon("tic-tac-toe"), 0.90));
-        graphics.setLineWidth(1.5);
-        graphics.strokeRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
-
-        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
-        graphics.fillRoundRect(startX, startY, boardSize, boardSize, 18, 18);
+        drawBoardFrame(graphics, startX, startY, boardSize, boardSize, gameNeon("tic-tac-toe"), darkTheme);
 
         graphics.setStroke(Color.web(gameNeon("tic-tac-toe"), 0.70));
         graphics.setLineWidth(Math.max(2, boardSize * 0.006));
@@ -500,13 +551,7 @@ public final class GameView {
         double cellW = boardWidth / com.touchgrass.bl.games.DodgerLogic.GRID_WIDTH;
         double cellH = boardHeight / com.touchgrass.bl.games.DodgerLogic.GRID_HEIGHT;
 
-        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
-        graphics.fillRoundRect(startX - 16, startY - 16, boardWidth + 32, boardHeight + 32, 24, 24);
-        graphics.setStroke(Color.web(gameNeon("dodger"), 0.90));
-        graphics.setLineWidth(1.5);
-        graphics.strokeRoundRect(startX - 16, startY - 16, boardWidth + 32, boardHeight + 32, 24, 24);
-        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
-        graphics.fillRoundRect(startX, startY, boardWidth, boardHeight, 18, 18);
+        drawBoardFrame(graphics, startX, startY, boardWidth, boardHeight, gameNeon("dodger"), darkTheme);
 
         graphics.setFill(Color.web("#FF8C42"));
         for (var obstacle : logic.getObstacles()) {
@@ -519,33 +564,6 @@ public final class GameView {
         graphics.fillRoundRect(px, py, cellW - 4, cellH - 4, 8, 8);
     }
 
-    private void drawTargetTapIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
-        if (!isTargetTapGame() || !(activeSession instanceof LocalSession localSession) || localSession.getTargetTapLogic() == null) {
-            return;
-        }
-        var logic = localSession.getTargetTapLogic();
-        double boardWidth = canvasWidth * 0.84;
-        double boardHeight = canvasHeight * 0.86;
-        double startX = (canvasWidth - boardWidth) / 2.0;
-        double startY = (canvasHeight - boardHeight) / 2.0;
-
-        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
-        graphics.fillRoundRect(startX - 16, startY - 16, boardWidth + 32, boardHeight + 32, 24, 24);
-        graphics.setStroke(Color.web(gameNeon("target-tap"), 0.90));
-        graphics.setLineWidth(1.5);
-        graphics.strokeRoundRect(startX - 16, startY - 16, boardWidth + 32, boardHeight + 32, 24, 24);
-        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
-        graphics.fillRoundRect(startX, startY, boardWidth, boardHeight, 18, 18);
-
-        double tx = startX + (logic.getTargetX() * boardWidth);
-        double ty = startY + (logic.getTargetY() * boardHeight);
-        double radius = logic.getTargetRadius() * Math.min(boardWidth, boardHeight);
-        graphics.setFill(Color.web("#00E5FF", 0.30));
-        graphics.fillOval(tx - (radius * 1.7), ty - (radius * 1.7), radius * 3.4, radius * 3.4);
-        graphics.setFill(Color.web("#00E5FF"));
-        graphics.fillOval(tx - radius, ty - radius, radius * 2, radius * 2);
-    }
-
     private void drawMazeIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
         if (!isMazeEscapeGame() || !(activeSession instanceof LocalSession localSession) || localSession.getMazeEscapeLogic() == null) {
             return;
@@ -556,13 +574,7 @@ public final class GameView {
         double startY = (canvasHeight - boardSize) / 2.0;
         double cell = boardSize / logic.getSize();
 
-        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
-        graphics.fillRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
-        graphics.setStroke(Color.web(gameNeon("maze-escape"), 0.90));
-        graphics.setLineWidth(1.5);
-        graphics.strokeRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
-        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
-        graphics.fillRoundRect(startX, startY, boardSize, boardSize, 18, 18);
+        drawBoardFrame(graphics, startX, startY, boardSize, boardSize, gameNeon("maze-escape"), darkTheme);
 
         graphics.setFill(Color.web("#213B66"));
         for (int row = 0; row < logic.getSize(); row++) {
@@ -579,16 +591,262 @@ public final class GameView {
         graphics.fillRoundRect(startX + (logic.getPlayerCol() * cell) + 3, startY + (logic.getPlayerRow() * cell) + 3, cell - 6, cell - 6, 8, 8);
     }
 
+    private void drawCarRaceIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
+        if (!isCarRaceGame() || !(activeSession instanceof LocalSession localSession) || localSession.getCarRaceLogic() == null) {
+            return;
+        }
+        CarRaceLogic logic = localSession.getCarRaceLogic();
+        double boardWidth = Math.min(canvasWidth * 0.42, canvasHeight * 0.58);
+        double boardHeight = canvasHeight * 0.90;
+        double startX = (canvasWidth - boardWidth) / 2.0;
+        double startY = (canvasHeight - boardHeight) / 2.0;
+        String neon = gameNeon("car-race");
+
+        drawBoardFrame(graphics, startX, startY, boardWidth, boardHeight, neon, darkTheme);
+
+        double laneWidth = boardWidth / CarRaceLogic.LANES;
+        graphics.setStroke(Color.web(neon, 0.45));
+        graphics.setLineWidth(2);
+        graphics.setLineDashes(14, 14);
+        for (int lane = 1; lane < CarRaceLogic.LANES; lane++) {
+            double laneX = startX + (lane * laneWidth);
+            graphics.strokeLine(laneX, startY + 8, laneX, startY + boardHeight - 8);
+        }
+        graphics.setLineDashes(0);
+
+        double scaleY = boardHeight / CarRaceLogic.TRACK_HEIGHT;
+        double carHeight = CarRaceLogic.CAR_HEIGHT * scaleY;
+        double carWidth = laneWidth - 12;
+
+        graphics.setFill(Color.web("#FF4D8F"));
+        for (CarRaceLogic.Traffic car : logic.getTraffic()) {
+            double tx = startX + (car.lane() * laneWidth) + 6;
+            double ty = startY + (car.y() * scaleY);
+            graphics.fillRoundRect(tx, ty, carWidth, carHeight, 6, 6);
+        }
+
+        graphics.setFill(Color.web(neon, 0.30));
+        double playerX = startX + (logic.getPlayerLane() * laneWidth) + 6;
+        double playerY = startY + boardHeight - carHeight - 12;
+        graphics.fillRoundRect(playerX - 3, playerY - 3, carWidth + 6, carHeight + 6, 9, 9);
+        graphics.setFill(Color.web(neon));
+        graphics.fillRoundRect(playerX, playerY, carWidth, carHeight, 6, 6);
+    }
+
+    private void drawSudokuIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
+        if (!isSudokuGame() || !(activeSession instanceof LocalSession localSession) || localSession.getSudokuLogic() == null) {
+            return;
+        }
+        SudokuLogic logic = localSession.getSudokuLogic();
+        double boardSize = Math.min(canvasWidth * 0.70, canvasHeight * 0.92);
+        double startX = (canvasWidth - boardSize) / 2.0;
+        double startY = (canvasHeight - boardSize) / 2.0;
+        double cell = boardSize / SudokuLogic.SIZE;
+        String neon = gameNeon("sudoku");
+
+        drawBoardFrame(graphics, startX, startY, boardSize, boardSize, neon, darkTheme);
+
+        if (logic.getSelectedRow() >= 0 && logic.getSelectedCol() >= 0) {
+            graphics.setFill(Color.web(neon, 0.18));
+            graphics.fillRect(startX + (logic.getSelectedCol() * cell), startY + (logic.getSelectedRow() * cell), cell, cell);
+        }
+
+        graphics.setStroke(Color.web(neon, 0.55));
+        graphics.setLineWidth(1);
+        for (int i = 1; i < SudokuLogic.SIZE; i++) {
+            double pos = startX + (i * cell);
+            graphics.strokeLine(pos, startY, pos, startY + boardSize);
+            pos = startY + (i * cell);
+            graphics.strokeLine(startX, pos, startX + boardSize, pos);
+        }
+        graphics.setLineWidth(2.4);
+        graphics.setStroke(Color.web(neon));
+        for (int i = 1; i < SudokuLogic.SIZE / SudokuLogic.SUBGRID; i++) {
+            double pos = startX + (i * SudokuLogic.SUBGRID * cell);
+            graphics.strokeLine(pos, startY, pos, startY + boardSize);
+            pos = startY + (i * SudokuLogic.SUBGRID * cell);
+            graphics.strokeLine(startX, pos, startX + boardSize, pos);
+        }
+
+        graphics.setFont(Font.font("Consolas", Math.max(20, cell * 0.55)));
+        for (int row = 0; row < SudokuLogic.SIZE; row++) {
+            for (int col = 0; col < SudokuLogic.SIZE; col++) {
+                int value = logic.getValue(row, col);
+                if (value == 0) {
+                    continue;
+                }
+                Color fill;
+                if (logic.isGiven(row, col)) {
+                    fill = darkTheme ? Color.web("#E8F4FF") : Color.web("#0D1A36");
+                } else if (logic.isCorrect(row, col)) {
+                    fill = Color.web(neon);
+                } else {
+                    fill = Color.web("#FF4D8F");
+                }
+                graphics.setFill(fill);
+                double textX = startX + (col * cell) + (cell * 0.30);
+                double textY = startY + (row * cell) + (cell * 0.72);
+                graphics.fillText(String.valueOf(value), textX, textY);
+            }
+        }
+
+        if (logic.isSolved()) {
+            graphics.setFill(Color.web(neon, 0.18));
+            graphics.fillRect(startX, startY, boardSize, boardSize);
+        }
+    }
+
+    private void drawShooterIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
+        if (!isShooterGame() || !(activeSession instanceof LocalSession localSession) || localSession.getShooterLogic() == null) {
+            return;
+        }
+        ShooterLogic logic = localSession.getShooterLogic();
+        double boardWidth = Math.min(canvasWidth * 0.70, canvasHeight * 1.05);
+        double boardHeight = canvasHeight * 0.90;
+        double startX = (canvasWidth - boardWidth) / 2.0;
+        double startY = (canvasHeight - boardHeight) / 2.0;
+        String neon = gameNeon("shooter");
+
+        drawBoardFrame(graphics, startX, startY, boardWidth, boardHeight, neon, darkTheme);
+
+        double scaleX = boardWidth / ShooterLogic.FIELD_WIDTH;
+        double scaleY = boardHeight / ShooterLogic.FIELD_HEIGHT;
+
+        graphics.setFill(Color.web(neon, 0.30));
+        for (ShooterLogic.Bullet bullet : logic.getBullets()) {
+            double bx = startX + (bullet.x() * scaleX);
+            double by = startY + (bullet.y() * scaleY);
+            graphics.fillRect(bx - 2, by - 2, (ShooterLogic.BULLET_WIDTH * scaleX) + 4, (ShooterLogic.BULLET_HEIGHT * scaleY) + 4);
+        }
+        graphics.setFill(Color.web(neon));
+        for (ShooterLogic.Bullet bullet : logic.getBullets()) {
+            double bx = startX + (bullet.x() * scaleX);
+            double by = startY + (bullet.y() * scaleY);
+            graphics.fillRect(bx, by, ShooterLogic.BULLET_WIDTH * scaleX, ShooterLogic.BULLET_HEIGHT * scaleY);
+        }
+
+        graphics.setFill(Color.web("#B44FFF"));
+        for (ShooterLogic.Enemy enemy : logic.getEnemies()) {
+            double ex = startX + (enemy.x() * scaleX);
+            double ey = startY + (enemy.y() * scaleY);
+            graphics.fillOval(ex, ey, ShooterLogic.ENEMY_SIZE * scaleX, ShooterLogic.ENEMY_SIZE * scaleY);
+        }
+
+        double playerW = ShooterLogic.PLAYER_WIDTH * scaleX;
+        double playerH = ShooterLogic.PLAYER_HEIGHT * scaleY;
+        double playerX = startX + (logic.getPlayerX() * scaleX);
+        double playerY = startY + (ShooterLogic.PLAYER_Y * scaleY);
+        graphics.setFill(Color.web(neon, 0.30));
+        graphics.fillRoundRect(playerX - 4, playerY - 4, playerW + 8, playerH + 8, 10, 10);
+        graphics.setFill(Color.web(neon));
+        graphics.fillRoundRect(playerX, playerY, playerW, playerH, 6, 6);
+    }
+
+    private void drawDriftTrackIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
+        if (!isDriftTrackGame()) {
+            return;
+        }
+        DriftTrackState state = activeSession.getDriftTrackState();
+        if (state == null) {
+            graphics.setFill(Color.web("#4A6A8A"));
+            graphics.setFont(Font.font("Consolas", 20));
+            graphics.fillText("WAITING FOR DRIFT TRACK SYNC...", canvasWidth * 0.27, canvasHeight * 0.52);
+            return;
+        }
+
+        double trackWidth = Math.min(canvasWidth * 0.78, canvasHeight * 1.55);
+        double trackHeight = canvasHeight * 0.90;
+        double startX = (canvasWidth - trackWidth) / 2.0;
+        double startY = (canvasHeight - trackHeight) / 2.0;
+        String neon = gameNeon("drift-track");
+
+        drawBoardFrame(graphics, startX, startY, trackWidth, trackHeight, neon, darkTheme);
+
+        double half = trackWidth / 2.0;
+        double laneWidth = half / DriftTrackLogic.LANES_PER_SIDE;
+        double scaleY = trackHeight / DriftTrackLogic.TRACK_HEIGHT;
+        double carHeight = DriftTrackLogic.CAR_HEIGHT * scaleY;
+        double carWidth = laneWidth - 10;
+
+        graphics.setStroke(Color.web(neon, 0.55));
+        graphics.setLineWidth(2.6);
+        graphics.strokeLine(startX + half, startY + 6, startX + half, startY + trackHeight - 6);
+
+        graphics.setStroke(Color.web(neon, 0.32));
+        graphics.setLineWidth(1.6);
+        graphics.setLineDashes(12, 12);
+        for (int side = 0; side < 2; side++) {
+            double sideOriginX = startX + (side * half);
+            for (int lane = 1; lane < DriftTrackLogic.LANES_PER_SIDE; lane++) {
+                double laneX = sideOriginX + (lane * laneWidth);
+                graphics.strokeLine(laneX, startY + 8, laneX, startY + trackHeight - 8);
+            }
+        }
+        graphics.setLineDashes(0);
+
+        graphics.setFill(Color.web("#FF4D8F"));
+        for (DriftTrackState.Obstacle obstacle : state.getObstacles()) {
+            double sideOriginX = startX + (obstacle.getSide() * half);
+            double ox = sideOriginX + (obstacle.getLane() * laneWidth) + 5;
+            double oy = startY + (obstacle.getY() * scaleY);
+            graphics.fillRoundRect(ox, oy, carWidth, carHeight, 6, 6);
+        }
+
+        drawDriftCar(graphics, startX, startY, half, laneWidth, scaleY, carWidth, carHeight, 0, state.getPlayer1Lane(), state.isPlayer1Crashed(), gameNeon("snake"));
+        drawDriftCar(graphics, startX, startY, half, laneWidth, scaleY, carWidth, carHeight, 1, state.getPlayer2Lane(), state.isPlayer2Crashed(), gameNeon("pong"));
+
+        graphics.setFont(Font.font("Consolas", Math.max(14, trackHeight * 0.04)));
+        graphics.setFill(Color.web(gameNeon("snake")));
+        graphics.fillText("P1 " + state.getPlayer1Distance() + " / " + DriftTrackLogic.FINISH_DISTANCE, startX + 14, startY + 26);
+        graphics.setFill(Color.web(gameNeon("pong")));
+        graphics.fillText("P2 " + state.getPlayer2Distance() + " / " + DriftTrackLogic.FINISH_DISTANCE, startX + half + 14, startY + 26);
+
+        if (state.isFinished() && state.getWinningPlayer() > 0) {
+            graphics.setFill(Color.web(neon, 0.20));
+            graphics.fillRect(startX, startY, trackWidth, trackHeight);
+            graphics.setFill(Color.web("#E8F4FF"));
+            graphics.setFont(Font.font("Consolas", Math.max(28, trackHeight * 0.10)));
+            graphics.fillText("PLAYER " + state.getWinningPlayer() + " WINS", startX + (trackWidth * 0.30), startY + (trackHeight * 0.50));
+        }
+    }
+
+    private void drawDriftCar(GraphicsContext graphics, double startX, double startY, double half, double laneWidth, double scaleY,
+                              double carWidth, double carHeight, int side, int lane, boolean crashed, String color) {
+        double sideOriginX = startX + (side * half);
+        double cx = sideOriginX + (lane * laneWidth) + 5;
+        double cy = startY + ((DriftTrackLogic.TRACK_HEIGHT - DriftTrackLogic.CAR_HEIGHT - 4) * scaleY);
+        graphics.setFill(Color.web(color, crashed ? 0.20 : 0.32));
+        graphics.fillRoundRect(cx - 3, cy - 3, carWidth + 6, carHeight + 6, 9, 9);
+        graphics.setFill(Color.web(crashed ? "#FF4D8F" : color));
+        graphics.fillRoundRect(cx, cy, carWidth, carHeight, 6, 6);
+    }
+
+    private void drawBoardFrame(GraphicsContext graphics, double startX, double startY, double width, double height, String neonColor, boolean darkTheme) {
+        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
+        graphics.fillRoundRect(startX - 16, startY - 16, width + 32, height + 32, 24, 24);
+        graphics.setStroke(Color.web(neonColor, 0.90));
+        graphics.setLineWidth(1.5);
+        graphics.strokeRoundRect(startX - 16, startY - 16, width + 32, height + 32, 24, 24);
+        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
+        graphics.fillRoundRect(startX, startY, width, height, 18, 18);
+    }
+
     private boolean shouldTickLogic(long now) {
-        if (isPongGame()) {
+        if (isPongGame() || isDriftTrackGame()) {
             return true;
         }
         if (isSnakeGame() && activeSession instanceof LocalSession localSession && localSession.getSnakeLogic() != null) {
             long dynamicTick = Math.max(55_000_000L, LOGIC_TICK_NS - (localSession.getSnakeLogic().getScore() * 350_000L));
             return lastLogicTickTime == 0L || now - lastLogicTickTime >= dynamicTick;
         }
-        if (isTargetTapGame()) {
-            return lastLogicTickTime == 0L || now - lastLogicTickTime >= 40_000_000L;
+        if (isCarRaceGame()) {
+            return lastLogicTickTime == 0L || now - lastLogicTickTime >= 30_000_000L;
+        }
+        if (isShooterGame()) {
+            return lastLogicTickTime == 0L || now - lastLogicTickTime >= 25_000_000L;
+        }
+        if (isSudokuGame()) {
+            return lastLogicTickTime == 0L || now - lastLogicTickTime >= 100_000_000L;
         }
         return lastLogicTickTime == 0L || now - lastLogicTickTime >= LOGIC_TICK_NS;
     }
@@ -609,12 +867,24 @@ public final class GameView {
         return GameCatalog.ENGINE_DODGER.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
     }
 
-    private boolean isTargetTapGame() {
-        return GameCatalog.ENGINE_TARGET_TAP.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
-    }
-
     private boolean isMazeEscapeGame() {
         return GameCatalog.ENGINE_MAZE_ESCAPE.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
+    }
+
+    private boolean isCarRaceGame() {
+        return GameCatalog.ENGINE_CAR_RACE.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
+    }
+
+    private boolean isSudokuGame() {
+        return GameCatalog.ENGINE_SUDOKU.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
+    }
+
+    private boolean isShooterGame() {
+        return GameCatalog.ENGINE_SHOOTER.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
+    }
+
+    private boolean isDriftTrackGame() {
+        return GameCatalog.ENGINE_DRIFT_TRACK.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
     }
 
     private String gameName() {
@@ -631,26 +901,53 @@ public final class GameView {
                 && "LocalCoOp".equalsIgnoreCase(activeSession.getMode());
     }
 
-    private boolean isLocalCoOpPongKey(KeyCode keyCode) {
-        return keyCode == KeyCode.W || keyCode == KeyCode.S || keyCode == KeyCode.UP || keyCode == KeyCode.DOWN;
+    private boolean isDualPlayerKey(KeyCode keyCode) {
+        return keyCode == KeyCode.W || keyCode == KeyCode.S || keyCode == KeyCode.UP || keyCode == KeyCode.DOWN
+                || keyCode == KeyCode.A || keyCode == KeyCode.D || keyCode == KeyCode.LEFT || keyCode == KeyCode.RIGHT;
     }
 
-    private void pumpLocalCoOpPongInputs() {
-        if (!(activeSession instanceof LocalSession localSession) || !isLocalCoOpPong()) {
+    private void pumpDualPlayerInputs() {
+        if (isLocalCoOpPong() && activeSession instanceof LocalSession localPongSession) {
+            boolean p1Up = pressedKeys.contains(KeyCode.W);
+            boolean p1Down = pressedKeys.contains(KeyCode.S);
+            if (p1Up ^ p1Down) {
+                localPongSession.handleInputForPlayer(p1Up ? InputCommand.UP : InputCommand.DOWN, 1, true);
+            }
+            boolean p2Up = pressedKeys.contains(KeyCode.UP);
+            boolean p2Down = pressedKeys.contains(KeyCode.DOWN);
+            if (p2Up ^ p2Down) {
+                localPongSession.handleInputForPlayer(p2Up ? InputCommand.UP : InputCommand.DOWN, 2, true);
+            }
             return;
         }
-
-        boolean p1Up = pressedKeys.contains(KeyCode.W);
-        boolean p1Down = pressedKeys.contains(KeyCode.S);
-        if (p1Up ^ p1Down) {
-            localSession.handleInputForPlayer(p1Up ? InputCommand.UP : InputCommand.DOWN, 1, true);
+        if (!isDriftTrackGame()) {
+            return;
         }
-
-        boolean p2Up = pressedKeys.contains(KeyCode.UP);
-        boolean p2Down = pressedKeys.contains(KeyCode.DOWN);
-        if (p2Up ^ p2Down) {
-            localSession.handleInputForPlayer(p2Up ? InputCommand.UP : InputCommand.DOWN, 2, true);
+        if (activeSession instanceof LocalSession localDriftSession) {
+            if (consumeOnce(KeyCode.A)) {
+                localDriftSession.handleInputForPlayer(InputCommand.LEFT, 1, true);
+            }
+            if (consumeOnce(KeyCode.D)) {
+                localDriftSession.handleInputForPlayer(InputCommand.RIGHT, 1, true);
+            }
+            if (consumeOnce(KeyCode.LEFT)) {
+                localDriftSession.handleInputForPlayer(InputCommand.LEFT, 2, true);
+            }
+            if (consumeOnce(KeyCode.RIGHT)) {
+                localDriftSession.handleInputForPlayer(InputCommand.RIGHT, 2, true);
+            }
+            return;
         }
+        if (consumeOnce(KeyCode.A) || consumeOnce(KeyCode.LEFT)) {
+            activeSession.handleInput(InputCommand.LEFT, true);
+        }
+        if (consumeOnce(KeyCode.D) || consumeOnce(KeyCode.RIGHT)) {
+            activeSession.handleInput(InputCommand.RIGHT, true);
+        }
+    }
+
+    private boolean consumeOnce(KeyCode keyCode) {
+        return pressedKeys.remove(keyCode);
     }
 
     private void returnToLobby() {
@@ -658,25 +955,8 @@ public final class GameView {
     }
 
     private void handleCanvasClicked(MouseEvent event) {
-        if (isTargetTapGame() && activeSession instanceof LocalSession localSession) {
-            if (localSession.getTargetTapLogic() == null) {
-                inlineStatusMessage = "Target Tap unavailable in this session.";
-                return;
-            }
-            double boardWidth = canvas.getWidth() * 0.84;
-            double boardHeight = canvas.getHeight() * 0.86;
-            double startX = (canvas.getWidth() - boardWidth) / 2.0;
-            double startY = (canvas.getHeight() - boardHeight) / 2.0;
-            double x = event.getX();
-            double y = event.getY();
-            if (x < startX || x > startX + boardWidth || y < startY || y > startY + boardHeight) {
-                inlineStatusMessage = "Tap inside the board area.";
-                return;
-            }
-            double localXRatio = (x - startX) / Math.max(1, boardWidth);
-            double localYRatio = (y - startY) / Math.max(1, boardHeight);
-            boolean hit = localSession.handleTargetTap(localXRatio, localYRatio);
-            inlineStatusMessage = hit ? "Nice hit." : "Tap on the cyan target.";
+        if (isSudokuGame() && activeSession instanceof LocalSession localSession && localSession.getSudokuLogic() != null) {
+            handleSudokuClick(localSession.getSudokuLogic(), event.getX(), event.getY());
             return;
         }
         if (!isTicTacToeGame() || !(activeSession instanceof LocalSession localSession)) {
@@ -706,6 +986,20 @@ public final class GameView {
             return;
         }
         inlineStatusMessage = "";
+    }
+
+    private void handleSudokuClick(SudokuLogic logic, double clickX, double clickY) {
+        double boardSize = Math.min(canvas.getWidth() * 0.70, canvas.getHeight() * 0.92);
+        double startX = (canvas.getWidth() - boardSize) / 2.0;
+        double startY = (canvas.getHeight() - boardSize) / 2.0;
+        if (clickX < startX || clickX > startX + boardSize || clickY < startY || clickY > startY + boardSize) {
+            return;
+        }
+        double cell = boardSize / SudokuLogic.SIZE;
+        int col = (int) ((clickX - startX) / cell);
+        int row = (int) ((clickY - startY) / cell);
+        logic.selectCell(row, col);
+        inlineStatusMessage = "Use 1-9 to fill, 0 to clear, H for hint.";
     }
 
     private void setupGameOverOverlay(boolean darkTheme) {

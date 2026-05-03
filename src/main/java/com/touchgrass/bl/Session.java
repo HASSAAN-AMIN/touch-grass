@@ -1,7 +1,8 @@
 package com.touchgrass.bl;
 
-import com.touchgrass.bl.games.InputCommand;
+import com.touchgrass.bl.games.DriftTrackState;
 import com.touchgrass.bl.games.GameState;
+import com.touchgrass.bl.games.InputCommand;
 
 public abstract class Session {
     private String sessionId;
@@ -41,6 +42,10 @@ public abstract class Session {
     public abstract int getScore();
 
     public GameState getCurrentGameState() {
+        return null;
+    }
+
+    public DriftTrackState getDriftTrackState() {
         return null;
     }
 }

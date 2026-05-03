@@ -1,12 +1,16 @@
 package com.touchgrass.bl;
 
+import com.touchgrass.bl.games.CarRaceLogic;
+import com.touchgrass.bl.games.DodgerLogic;
+import com.touchgrass.bl.games.DriftTrackLogic;
+import com.touchgrass.bl.games.DriftTrackState;
 import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
-import com.touchgrass.bl.games.DodgerLogic;
 import com.touchgrass.bl.games.MazeEscapeLogic;
 import com.touchgrass.bl.games.PongLogic;
+import com.touchgrass.bl.games.ShooterLogic;
 import com.touchgrass.bl.games.SnakeLogic;
-import com.touchgrass.bl.games.TargetTapLogic;
+import com.touchgrass.bl.games.SudokuLogic;
 import com.touchgrass.models.GameCatalog;
 import com.touchgrass.models.TicTacToeLogic;
 
@@ -16,8 +20,11 @@ public final class LocalSession extends Session {
     private PongLogic pongLogic;
     private TicTacToeLogic ticTacToeLogic;
     private DodgerLogic dodgerLogic;
-    private TargetTapLogic targetTapLogic;
     private MazeEscapeLogic mazeEscapeLogic;
+    private CarRaceLogic carRaceLogic;
+    private SudokuLogic sudokuLogic;
+    private ShooterLogic shooterLogic;
+    private DriftTrackLogic driftTrackLogic;
 
     public LocalSession(String sessionId, String gameId, String mode, String p1Controls, String p2Controls) {
         super(sessionId, mode);
@@ -62,16 +69,49 @@ public final class LocalSession extends Session {
             }
             return;
         }
+        if (carRaceLogic != null && pressed) {
+            if (inputCommand == InputCommand.LEFT) {
+                carRaceLogic.steerLeft();
+            } else if (inputCommand == InputCommand.RIGHT) {
+                carRaceLogic.steerRight();
+            }
+            return;
+        }
+        if (shooterLogic != null) {
+            if (inputCommand == InputCommand.LEFT) {
+                shooterLogic.setMovingLeft(pressed);
+            } else if (inputCommand == InputCommand.RIGHT) {
+                shooterLogic.setMovingRight(pressed);
+            } else if (inputCommand == InputCommand.ACTION && pressed) {
+                shooterLogic.fire();
+            }
+            return;
+        }
+        if (driftTrackLogic != null && pressed) {
+            if (inputCommand == InputCommand.LEFT) {
+                driftTrackLogic.steerPlayerLeft(1);
+            } else if (inputCommand == InputCommand.RIGHT) {
+                driftTrackLogic.steerPlayerRight(1);
+            }
+            return;
+        }
         if (ticTacToeLogic != null && pressed && inputCommand == InputCommand.ACTION) {
             // ACTION is kept for keyboard-based move confirmation extensions.
         }
     }
 
     public void handleInputForPlayer(InputCommand inputCommand, int playerNumber, boolean pressed) {
-        if (pongLogic == null || !pressed) {
+        if (pongLogic != null && pressed) {
+            pongLogic.processCommand(inputCommand, playerNumber);
             return;
         }
-        pongLogic.processCommand(inputCommand, playerNumber);
+        if (driftTrackLogic != null && pressed) {
+            if (inputCommand == InputCommand.LEFT) {
+                driftTrackLogic.steerPlayerLeft(playerNumber);
+            } else if (inputCommand == InputCommand.RIGHT) {
+                driftTrackLogic.steerPlayerRight(playerNumber);
+            }
+        }
     }
 
     @Override
@@ -91,8 +131,20 @@ public final class LocalSession extends Session {
             dodgerLogic.update();
             return;
         }
-        if (targetTapLogic != null) {
-            targetTapLogic.update();
+        if (carRaceLogic != null) {
+            carRaceLogic.update();
+            return;
+        }
+        if (sudokuLogic != null) {
+            sudokuLogic.update();
+            return;
+        }
+        if (shooterLogic != null) {
+            shooterLogic.update();
+            return;
+        }
+        if (driftTrackLogic != null) {
+            driftTrackLogic.update();
         }
     }
 
@@ -104,11 +156,20 @@ public final class LocalSession extends Session {
         if (dodgerLogic != null) {
             return dodgerLogic.isGameOver();
         }
-        if (targetTapLogic != null) {
-            return targetTapLogic.isGameOver();
-        }
         if (mazeEscapeLogic != null) {
             return mazeEscapeLogic.isGameOver();
+        }
+        if (carRaceLogic != null) {
+            return carRaceLogic.isGameOver();
+        }
+        if (sudokuLogic != null) {
+            return sudokuLogic.isGameOver();
+        }
+        if (shooterLogic != null) {
+            return shooterLogic.isGameOver();
+        }
+        if (driftTrackLogic != null) {
+            return driftTrackLogic.isGameOver();
         }
         return ticTacToeLogic != null && ticTacToeLogic.isGameOver();
     }
@@ -121,11 +182,20 @@ public final class LocalSession extends Session {
         if (dodgerLogic != null) {
             return dodgerLogic.getScore();
         }
-        if (targetTapLogic != null) {
-            return targetTapLogic.getScore();
-        }
         if (mazeEscapeLogic != null) {
             return mazeEscapeLogic.getScore();
+        }
+        if (carRaceLogic != null) {
+            return carRaceLogic.getScore();
+        }
+        if (sudokuLogic != null) {
+            return sudokuLogic.getScore();
+        }
+        if (shooterLogic != null) {
+            return shooterLogic.getScore();
+        }
+        if (driftTrackLogic != null) {
+            return driftTrackLogic.getCombinedScore();
         }
         return 0;
     }
@@ -136,6 +206,14 @@ public final class LocalSession extends Session {
             return null;
         }
         return pongLogic.toGameState();
+    }
+
+    @Override
+    public DriftTrackState getDriftTrackState() {
+        if (driftTrackLogic == null) {
+            return null;
+        }
+        return driftTrackLogic.toState();
     }
 
     public SnakeLogic getSnakeLogic() {
@@ -150,12 +228,24 @@ public final class LocalSession extends Session {
         return dodgerLogic;
     }
 
-    public TargetTapLogic getTargetTapLogic() {
-        return targetTapLogic;
-    }
-
     public MazeEscapeLogic getMazeEscapeLogic() {
         return mazeEscapeLogic;
+    }
+
+    public CarRaceLogic getCarRaceLogic() {
+        return carRaceLogic;
+    }
+
+    public SudokuLogic getSudokuLogic() {
+        return sudokuLogic;
+    }
+
+    public ShooterLogic getShooterLogic() {
+        return shooterLogic;
+    }
+
+    public DriftTrackLogic getDriftTrackLogic() {
+        return driftTrackLogic;
     }
 
     public boolean placeTicTacToeMark(int row, int col) {
@@ -163,13 +253,6 @@ public final class LocalSession extends Session {
             return false;
         }
         return ticTacToeLogic.play(row, col);
-    }
-
-    public boolean handleTargetTap(double xRatio, double yRatio) {
-        if (targetTapLogic == null) {
-            return false;
-        }
-        return targetTapLogic.tap(xRatio, yRatio);
     }
 
     private void initializeGameLogic() {
@@ -189,12 +272,24 @@ public final class LocalSession extends Session {
             dodgerLogic = new DodgerLogic();
             return;
         }
-        if (GameCatalog.ENGINE_TARGET_TAP.equalsIgnoreCase(engineId)) {
-            targetTapLogic = new TargetTapLogic();
-            return;
-        }
         if (GameCatalog.ENGINE_MAZE_ESCAPE.equalsIgnoreCase(engineId)) {
             mazeEscapeLogic = new MazeEscapeLogic();
+            return;
+        }
+        if (GameCatalog.ENGINE_CAR_RACE.equalsIgnoreCase(engineId)) {
+            carRaceLogic = new CarRaceLogic();
+            return;
+        }
+        if (GameCatalog.ENGINE_SUDOKU.equalsIgnoreCase(engineId)) {
+            sudokuLogic = new SudokuLogic();
+            return;
+        }
+        if (GameCatalog.ENGINE_SHOOTER.equalsIgnoreCase(engineId)) {
+            shooterLogic = new ShooterLogic();
+            return;
+        }
+        if (GameCatalog.ENGINE_DRIFT_TRACK.equalsIgnoreCase(engineId)) {
+            driftTrackLogic = new DriftTrackLogic();
         }
     }
 
