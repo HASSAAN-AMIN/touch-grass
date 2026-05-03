@@ -206,6 +206,9 @@ public final class GameView {
         drawPongIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
         drawSnakeIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
         drawTicTacToeIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+        drawDodgerIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+        drawTargetTapIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+        drawMazeIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
     }
 
     private void drawDotGrid(GraphicsContext graphics, boolean darkTheme, double width, double height) {
@@ -236,6 +239,13 @@ public final class GameView {
             scoreText = logic.isGameOver()
                     ? (logic.isDraw() ? "RESULT DRAW" : "WINNER " + logic.getWinner())
                     : "TURN " + logic.getCurrentPlayer();
+        } else if (isDodgerGame() && activeSession instanceof LocalSession localSession && localSession.getDodgerLogic() != null) {
+            scoreText = "SCORE " + localSession.getDodgerLogic().getScore();
+        } else if (isTargetTapGame() && activeSession instanceof LocalSession localSession && localSession.getTargetTapLogic() != null) {
+            int secondsLeft = Math.max(0, localSession.getTargetTapLogic().getTimerTicks() / 10);
+            scoreText = "SCORE " + localSession.getTargetTapLogic().getScore() + " | TIME " + secondsLeft + "s";
+        } else if (isMazeEscapeGame() && activeSession instanceof LocalSession localSession && localSession.getMazeEscapeLogic() != null) {
+            scoreText = "STEPS " + localSession.getMazeEscapeLogic().getSteps() + " | SCORE " + localSession.getMazeEscapeLogic().getScore();
         } else {
             scoreText = "SESSION ACTIVE";
         }
@@ -478,6 +488,97 @@ public final class GameView {
         }
     }
 
+    private void drawDodgerIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
+        if (!isDodgerGame() || !(activeSession instanceof LocalSession localSession) || localSession.getDodgerLogic() == null) {
+            return;
+        }
+        var logic = localSession.getDodgerLogic();
+        double boardWidth = canvasWidth * 0.60;
+        double boardHeight = canvasHeight * 0.88;
+        double startX = (canvasWidth - boardWidth) / 2.0;
+        double startY = (canvasHeight - boardHeight) / 2.0;
+        double cellW = boardWidth / com.touchgrass.bl.games.DodgerLogic.GRID_WIDTH;
+        double cellH = boardHeight / com.touchgrass.bl.games.DodgerLogic.GRID_HEIGHT;
+
+        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
+        graphics.fillRoundRect(startX - 16, startY - 16, boardWidth + 32, boardHeight + 32, 24, 24);
+        graphics.setStroke(Color.web(gameNeon("dodger"), 0.90));
+        graphics.setLineWidth(1.5);
+        graphics.strokeRoundRect(startX - 16, startY - 16, boardWidth + 32, boardHeight + 32, 24, 24);
+        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
+        graphics.fillRoundRect(startX, startY, boardWidth, boardHeight, 18, 18);
+
+        graphics.setFill(Color.web("#FF8C42"));
+        for (var obstacle : logic.getObstacles()) {
+            graphics.fillRoundRect(startX + (obstacle.x() * cellW) + 2, startY + (obstacle.y() * cellH) + 2, cellW - 4, cellH - 4, 6, 6);
+        }
+
+        graphics.setFill(Color.web("#00FF87"));
+        double px = startX + (logic.getPlayerX() * cellW) + 2;
+        double py = startY + ((com.touchgrass.bl.games.DodgerLogic.GRID_HEIGHT - 1) * cellH) + 2;
+        graphics.fillRoundRect(px, py, cellW - 4, cellH - 4, 8, 8);
+    }
+
+    private void drawTargetTapIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
+        if (!isTargetTapGame() || !(activeSession instanceof LocalSession localSession) || localSession.getTargetTapLogic() == null) {
+            return;
+        }
+        var logic = localSession.getTargetTapLogic();
+        double boardWidth = canvasWidth * 0.84;
+        double boardHeight = canvasHeight * 0.86;
+        double startX = (canvasWidth - boardWidth) / 2.0;
+        double startY = (canvasHeight - boardHeight) / 2.0;
+
+        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
+        graphics.fillRoundRect(startX - 16, startY - 16, boardWidth + 32, boardHeight + 32, 24, 24);
+        graphics.setStroke(Color.web(gameNeon("target-tap"), 0.90));
+        graphics.setLineWidth(1.5);
+        graphics.strokeRoundRect(startX - 16, startY - 16, boardWidth + 32, boardHeight + 32, 24, 24);
+        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
+        graphics.fillRoundRect(startX, startY, boardWidth, boardHeight, 18, 18);
+
+        double tx = startX + (logic.getTargetX() * boardWidth);
+        double ty = startY + (logic.getTargetY() * boardHeight);
+        double radius = logic.getTargetRadius() * Math.min(boardWidth, boardHeight);
+        graphics.setFill(Color.web("#00E5FF", 0.30));
+        graphics.fillOval(tx - (radius * 1.7), ty - (radius * 1.7), radius * 3.4, radius * 3.4);
+        graphics.setFill(Color.web("#00E5FF"));
+        graphics.fillOval(tx - radius, ty - radius, radius * 2, radius * 2);
+    }
+
+    private void drawMazeIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
+        if (!isMazeEscapeGame() || !(activeSession instanceof LocalSession localSession) || localSession.getMazeEscapeLogic() == null) {
+            return;
+        }
+        var logic = localSession.getMazeEscapeLogic();
+        double boardSize = Math.min(canvasWidth * 0.76, canvasHeight * 0.88);
+        double startX = (canvasWidth - boardSize) / 2.0;
+        double startY = (canvasHeight - boardSize) / 2.0;
+        double cell = boardSize / logic.getSize();
+
+        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
+        graphics.fillRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
+        graphics.setStroke(Color.web(gameNeon("maze-escape"), 0.90));
+        graphics.setLineWidth(1.5);
+        graphics.strokeRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
+        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
+        graphics.fillRoundRect(startX, startY, boardSize, boardSize, 18, 18);
+
+        graphics.setFill(Color.web("#213B66"));
+        for (int row = 0; row < logic.getSize(); row++) {
+            for (int col = 0; col < logic.getSize(); col++) {
+                if (logic.isWall(row, col)) {
+                    graphics.fillRect(startX + (col * cell), startY + (row * cell), cell, cell);
+                }
+            }
+        }
+
+        graphics.setFill(Color.web("#B44FFF"));
+        graphics.fillRoundRect(startX + (logic.getGoalCol() * cell) + 3, startY + (logic.getGoalRow() * cell) + 3, cell - 6, cell - 6, 8, 8);
+        graphics.setFill(Color.web("#00FF87"));
+        graphics.fillRoundRect(startX + (logic.getPlayerCol() * cell) + 3, startY + (logic.getPlayerRow() * cell) + 3, cell - 6, cell - 6, 8, 8);
+    }
+
     private boolean shouldTickLogic(long now) {
         if (isPongGame()) {
             return true;
@@ -485,6 +586,9 @@ public final class GameView {
         if (isSnakeGame() && activeSession instanceof LocalSession localSession && localSession.getSnakeLogic() != null) {
             long dynamicTick = Math.max(55_000_000L, LOGIC_TICK_NS - (localSession.getSnakeLogic().getScore() * 350_000L));
             return lastLogicTickTime == 0L || now - lastLogicTickTime >= dynamicTick;
+        }
+        if (isTargetTapGame()) {
+            return lastLogicTickTime == 0L || now - lastLogicTickTime >= 40_000_000L;
         }
         return lastLogicTickTime == 0L || now - lastLogicTickTime >= LOGIC_TICK_NS;
     }
@@ -499,6 +603,18 @@ public final class GameView {
 
     private boolean isTicTacToeGame() {
         return GameCatalog.ENGINE_TIC_TAC_TOE.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
+    }
+
+    private boolean isDodgerGame() {
+        return GameCatalog.ENGINE_DODGER.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
+    }
+
+    private boolean isTargetTapGame() {
+        return GameCatalog.ENGINE_TARGET_TAP.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
+    }
+
+    private boolean isMazeEscapeGame() {
+        return GameCatalog.ENGINE_MAZE_ESCAPE.equalsIgnoreCase(GameCatalog.resolveEngineId(gameId));
     }
 
     private String gameName() {
@@ -542,6 +658,11 @@ public final class GameView {
     }
 
     private void handleCanvasClicked(MouseEvent event) {
+        if (isTargetTapGame() && activeSession instanceof LocalSession localSession) {
+            boolean hit = localSession.handleTargetTap(event.getX() / Math.max(1, canvas.getWidth()), event.getY() / Math.max(1, canvas.getHeight()));
+            inlineStatusMessage = hit ? "Nice hit." : "Tap on the cyan target.";
+            return;
+        }
         if (!isTicTacToeGame() || !(activeSession instanceof LocalSession localSession)) {
             return;
         }

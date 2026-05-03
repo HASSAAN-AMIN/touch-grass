@@ -149,7 +149,8 @@ public final class MainLobbyView {
         VBox shellCard = new VBox(12, overline, featuredLeaderboard, scrollPane);
         shellCard.setPadding(new Insets(18));
         shellCard.setMaxWidth(900);
-        shellCard.setPrefHeight(448);
+        shellCard.setPrefHeight(860);
+        shellCard.setMinHeight(860);
         shellCard.setStyle("-fx-background-color: " + cardSurface(darkTheme) + ";"
                 + "-fx-background-radius: 24;"
                 + "-fx-border-radius: 24;"
@@ -226,6 +227,20 @@ public final class MainLobbyView {
         Button singlePlayer = createModeButton("SINGLE PLAYER", neon, darkTheme, event -> systemController.launchGame(selectedGameId, "Single Player"));
         Button localCoOp = createModeButton("LOCAL CO-OP", neon, darkTheme, event -> systemController.launchGame(selectedGameId, "Local Co-Op"));
         Button lan = createModeButton("LAN MULTIPLAYER", gameNeon("pong"), darkTheme, event -> showLanChoicePane());
+        if (!GameCatalog.ENGINE_PONG.equalsIgnoreCase(GameCatalog.resolveEngineId(selectedGameId))) {
+            lan.setDisable(true);
+            lan.setText("LAN MULTIPLAYER (PONG ONLY)");
+            lan.setStyle("-fx-background-color: " + (darkTheme ? "rgba(8,14,30,0.58)" : "rgba(220,232,246,0.80)") + ";"
+                    + "-fx-text-fill: " + secondaryText(darkTheme) + ";"
+                    + "-fx-font-size: 12px;"
+                    + "-fx-font-weight: 900;"
+                    + "-fx-letter-spacing: 1px;"
+                    + "-fx-border-color: " + borderColor(darkTheme) + ";"
+                    + "-fx-border-width: 1.1;"
+                    + "-fx-background-radius: 12;"
+                    + "-fx-border-radius: 12;"
+                    + "-fx-padding: 10 14 10 14;");
+        }
         Button viewBoard = createModeButton("VIEW LEADERBOARD", neon, darkTheme, event -> showLeaderboardPane(selectedGameId));
         Button back = createGhostButton("BACK", darkTheme, event -> showGamesPane());
 
@@ -646,7 +661,7 @@ public final class MainLobbyView {
     private String appBackground(boolean darkTheme) {
         return darkTheme
                 ? "linear-gradient(to bottom right, #060D1C, #091633, #0F1B42)"
-                : "linear-gradient(to bottom right, #F0FAF5, #EEF5FF, #F6FAFF)";
+                : "linear-gradient(to bottom right, #EFF8F3, #E9F2FF, #F4F8FF)";
     }
 
     private String topBarBg(boolean darkTheme) {

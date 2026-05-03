@@ -249,16 +249,17 @@ public final class LoginView {
     }
 
     private Label createChip(String text, boolean darkTheme) {
+        String chipColor = darkTheme ? gameNeon("pong") : "#0D1A36";
         Label chip = new Label(text);
         chip.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-letter-spacing: 1.2px;"
-                + "-fx-text-fill: " + gameNeon("pong") + ";"
-                + "-fx-background-color: transparent;"
-                + "-fx-border-color: " + gameNeon("pong") + ";"
+                + "-fx-text-fill: " + chipColor + ";"
+                + "-fx-background-color: " + (darkTheme ? "transparent" : "rgba(230,240,252,0.95)") + ";"
+                + "-fx-border-color: " + chipColor + ";"
                 + "-fx-border-width: 1;"
                 + "-fx-border-radius: 20;"
                 + "-fx-background-radius: 20;"
                 + "-fx-padding: 4 10 4 10;");
-        chip.setEffect(new DropShadow(10, Color.web(gameNeon("pong"), darkTheme ? 0.22 : 0.14)));
+        chip.setEffect(new DropShadow(10, Color.web(chipColor, darkTheme ? 0.22 : 0.10)));
         return chip;
     }
 
