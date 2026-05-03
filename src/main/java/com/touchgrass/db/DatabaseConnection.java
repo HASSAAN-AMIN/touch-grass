@@ -8,9 +8,10 @@ import java.sql.SQLException;
  * Singleton database connection manager for MySQL.
  */
 public final class DatabaseConnection {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/touchgrass";
-    private static final String DB_USER = "root";
-    private static final String PASSWORD = "5796";
+    private static final String DB_URL =
+            getEnvOrDefault("TOUCHGRASS_DB_URL", "jdbc:mysql://localhost:3306/touchgrass");
+    private static final String DB_USER = getEnvOrDefault("TOUCHGRASS_DB_USER", "root");
+    private static final String PASSWORD = getEnvOrDefault("TOUCHGRASS_DB_PASSWORD", "5796");
 
     private static volatile DatabaseConnection instance;
     private Connection connection;
@@ -19,7 +20,9 @@ public final class DatabaseConnection {
         try {
             this.connection = DriverManager.getConnection(DB_URL, DB_USER, PASSWORD);
         } catch (SQLException e) {
-            throw new IllegalStateException("Unable to establish database connection.", e);
+            throw new IllegalStateException(
+                    "Unable to establish database connection for user '" + DB_USER + "' at '" + DB_URL + "'.",
+                    e);
         }
     }
 
@@ -41,7 +44,9 @@ public final class DatabaseConnection {
             }
             return connection;
         } catch (SQLException e) {
-            throw new IllegalStateException("Unable to retrieve database connection.", e);
+            throw new IllegalStateException(
+                    "Unable to retrieve database connection for user '" + DB_USER + "' at '" + DB_URL + "'.",
+                    e);
         }
     }
 
@@ -53,5 +58,13 @@ public final class DatabaseConnection {
                 throw new IllegalStateException("Unable to close database connection.", e);
             }
         }
+    }
+
+    private static String getEnvOrDefault(String key, String defaultValue) {
+        String value = System.getenv(key);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return value;
     }
 }
