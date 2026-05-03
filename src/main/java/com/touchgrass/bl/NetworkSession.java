@@ -1,5 +1,7 @@
 package com.touchgrass.bl;
 
+import com.touchgrass.bl.games.InputCommand;
+
 public final class NetworkSession extends Session {
     private String hostIpAddress;
     private int port;
@@ -38,8 +40,13 @@ public final class NetworkSession extends Session {
     }
 
     @Override
-    public void handleInput(String inputKey, boolean pressed) {
-        System.out.println("Network input " + (pressed ? "pressed" : "released") + ": " + inputKey);
+    public void handleInput(InputCommand inputCommand, boolean pressed) {
+        System.out.println("Network input " + (pressed ? "pressed" : "released") + ": " + inputCommand);
+    }
+
+    @Override
+    public void tick() {
+        syncState();
     }
 
     public void syncState() {

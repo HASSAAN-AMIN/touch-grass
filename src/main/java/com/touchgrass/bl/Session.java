@@ -1,5 +1,7 @@
 package com.touchgrass.bl;
 
+import com.touchgrass.bl.games.InputCommand;
+
 public abstract class Session {
     private String sessionId;
     private String mode;
@@ -29,5 +31,7 @@ public abstract class Session {
 
     public abstract void end();
 
-    public abstract void handleInput(String inputKey, boolean pressed);
+    public abstract void handleInput(InputCommand inputCommand, boolean pressed);
+
+    public abstract void tick();
 }

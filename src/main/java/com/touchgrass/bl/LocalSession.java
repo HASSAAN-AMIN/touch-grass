@@ -1,13 +1,20 @@
 package com.touchgrass.bl;
 
+import com.touchgrass.bl.games.InputCommand;
+import com.touchgrass.bl.games.SnakeLogic;
+
 public final class LocalSession extends Session {
+    private final String gameId;
     private String p1Controls;
     private String p2Controls;
+    private SnakeLogic snakeLogic;
 
-    public LocalSession(String sessionId, String mode, String p1Controls, String p2Controls) {
+    public LocalSession(String sessionId, String gameId, String mode, String p1Controls, String p2Controls) {
         super(sessionId, mode);
+        this.gameId = gameId;
         this.p1Controls = p1Controls;
         this.p2Controls = p2Controls;
+        initializeGameLogic();
     }
 
     public String getP1Controls() {
@@ -29,7 +36,6 @@ public final class LocalSession extends Session {
     @Override
     public void start() {
         System.out.println("Local session started: " + getSessionId());
-        processInput();
     }
 
     @Override
@@ -38,12 +44,26 @@ public final class LocalSession extends Session {
     }
 
     @Override
-    public void handleInput(String inputKey, boolean pressed) {
-        System.out.println("Local input " + (pressed ? "pressed" : "released") + ": " + inputKey);
-        processInput();
+    public void handleInput(InputCommand inputCommand, boolean pressed) {
+        if (snakeLogic != null && pressed) {
+            snakeLogic.processCommand(inputCommand);
+        }
     }
 
-    public void processInput() {
-        System.out.println("Processing local split-keyboard input...");
+    @Override
+    public void tick() {
+        if (snakeLogic != null) {
+            snakeLogic.update();
+        }
+    }
+
+    public SnakeLogic getSnakeLogic() {
+        return snakeLogic;
+    }
+
+    private void initializeGameLogic() {
+        if ("snake".equalsIgnoreCase(gameId)) {
+            snakeLogic = new SnakeLogic();
+        }
     }
 }

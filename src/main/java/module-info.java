@@ -7,6 +7,7 @@ module com.touchgrass {
     exports com.touchgrass;
     exports com.touchgrass.ui;
     exports com.touchgrass.bl;
+    exports com.touchgrass.bl.games;
     exports com.touchgrass.db;
     exports com.touchgrass.models;
 
