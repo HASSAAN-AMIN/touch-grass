@@ -9,10 +9,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 public final class LoginView {
@@ -46,80 +48,105 @@ public final class LoginView {
 
     public Scene createScene() {
         UiSettings uiSettings = systemController.getUiSettings();
-        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
+        boolean darkTheme = uiSettings.getThemeMode() != UiSettings.ThemeMode.LIGHT;
 
-        Label heading = new Label("Welcome back");
-        heading.setStyle("-fx-font-size: 32px; -fx-text-fill: " + (lightTheme ? "#0F172A" : "#E2E8F0") + "; -fx-font-weight: 800;");
+        Label brandEmoji = new Label("🎮");
+        brandEmoji.setStyle("-fx-font-size: 56px;");
+        brandEmoji.setEffect(new DropShadow(20, Color.web(gameNeon("snake"), 0.65)));
 
-        Label subtitle = new Label("Sign in to continue your gaming session");
-        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + ";");
+        Label brandTitle = new Label("TOUCH GRASS");
+        brandTitle.setStyle("-fx-font-size: 46px; -fx-font-weight: 900; -fx-letter-spacing: 3px; -fx-text-fill: " + primaryText(darkTheme) + ";");
+        brandTitle.setEffect(new DropShadow(22, Color.web(gameNeon("snake"), 0.58)));
 
-        Label brandTitle = new Label("Touch Grass");
-        brandTitle.setStyle("-fx-font-size: 40px; -fx-font-weight: 900; -fx-text-fill: " + (lightTheme ? "#0F172A" : "#E2E8F0") + ";");
-        Label brandTag = new Label("A premium desktop arcade lounge");
-        brandTag.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: " + (lightTheme ? "#475569" : "#A8B8D3") + ";");
-        Label brandDetail = new Label("Modern visuals, quick local play, and online duels.\nEverything in one clean space.");
-        brandDetail.setStyle("-fx-font-size: 13px; -fx-line-spacing: 4; -fx-text-fill: " + (lightTheme ? "#667085" : "#8EA0BF") + ";");
+        Label brandSub = new Label("DARK NEON GAMING LOUNGE");
+        brandSub.setStyle("-fx-font-size: 11px; -fx-font-weight: 900; -fx-letter-spacing: 2.5px; -fx-text-fill: " + secondaryText(darkTheme) + ";");
+
+        Label brandDescription = new Label("Built for local duels, LAN sessions, and score chasing in a premium arcade shell.");
+        brandDescription.setWrapText(true);
+        brandDescription.setStyle("-fx-font-size: 13px; -fx-text-fill: " + secondaryText(darkTheme) + ";");
+
+        HBox chips = new HBox(8,
+                createChip("JAVAFX 21", darkTheme),
+                createChip("SOCKET LAN", darkTheme),
+                createChip("LEADERBOARD", darkTheme));
+        chips.setAlignment(Pos.CENTER_LEFT);
+
+        VBox brandCard = new VBox(14, brandEmoji, brandTitle, brandSub, brandDescription, chips);
+        brandCard.setPadding(new Insets(28));
+        brandCard.setMaxWidth(470);
+        brandCard.setStyle(
+                "-fx-background-color: " + brandCardSurface(darkTheme) + ";"
+                        + "-fx-background-radius: 24;"
+                        + "-fx-border-radius: 24;"
+                        + "-fx-border-width: 1.5;"
+                        + "-fx-border-color: " + gameNeon("snake") + ";");
+        brandCard.setEffect(new DropShadow(34, Color.web(gameNeon("snake"), 0.18)));
+
+        Label authHeading = new Label("SIGN IN");
+        authHeading.setStyle("-fx-font-size: 22px; -fx-font-weight: 900; -fx-letter-spacing: 2px; -fx-text-fill: " + primaryText(darkTheme) + ";");
+
+        Label authOverline = new Label("AUTHENTICATION");
+        authOverline.setStyle("-fx-font-size: 11px; -fx-font-weight: 900; -fx-letter-spacing: 2.5px; -fx-text-fill: " + secondaryText(darkTheme) + ";");
 
         usernameField.setPromptText("Username");
         usernameField.setMaxWidth(Double.MAX_VALUE);
-        usernameField.setStyle(inputStyle(uiSettings));
+        usernameField.setStyle(inputStyle(darkTheme));
 
         passwordField.setPromptText("Password");
         passwordField.setMaxWidth(Double.MAX_VALUE);
-        passwordField.setStyle(inputStyle(uiSettings));
+        passwordField.setStyle(inputStyle(darkTheme));
 
-        Button loginButton = new Button("Login");
+        Button loginButton = new Button("LOGIN");
         loginButton.setMaxWidth(Double.MAX_VALUE);
-        loginButton.setStyle(primaryButtonStyle(uiSettings));
+        loginButton.setStyle(primaryButtonStyle());
         loginButton.setOnAction(event -> attemptLogin());
 
-        Button registerButton = new Button("Register");
+        Button registerButton = new Button("REGISTER");
         registerButton.setMaxWidth(Double.MAX_VALUE);
-        registerButton.setStyle(secondaryButtonStyle(uiSettings));
+        registerButton.setStyle(ghostButtonStyle(darkTheme));
         registerButton.setOnAction(event -> showRegisterPane());
 
-        feedbackLabel.setStyle("-fx-text-fill: #B42318; -fx-font-size: 12px; -fx-font-weight: 600;");
+        feedbackLabel.setStyle("-fx-text-fill: " + danger(darkTheme) + "; -fx-font-size: 12px; -fx-font-weight: 700;");
 
-        HBox buttonRow = new HBox(10, loginButton, registerButton);
-        buttonRow.setAlignment(Pos.CENTER);
+        HBox loginButtons = new HBox(10, loginButton, registerButton);
+        loginButtons.setAlignment(Pos.CENTER);
         HBox.setHgrow(loginButton, Priority.ALWAYS);
         HBox.setHgrow(registerButton, Priority.ALWAYS);
 
-        Button backToLoginButton = new Button("Back to Login");
+        Button backToLoginButton = new Button("BACK");
         backToLoginButton.setMaxWidth(Double.MAX_VALUE);
-        backToLoginButton.setStyle(secondaryButtonStyle(uiSettings));
+        backToLoginButton.setStyle(ghostButtonStyle(darkTheme));
         backToLoginButton.setOnAction(event -> showLoginPane());
 
-        Button createAccountButton = new Button("Create Account");
+        Button createAccountButton = new Button("CREATE ACCOUNT");
         createAccountButton.setMaxWidth(Double.MAX_VALUE);
-        createAccountButton.setStyle(primaryButtonStyle(uiSettings));
+        createAccountButton.setStyle(primaryButtonStyle());
         createAccountButton.setOnAction(event -> attemptRegistration());
 
         registerUsernameField.setPromptText("Username");
         registerUsernameField.setMaxWidth(Double.MAX_VALUE);
-        registerUsernameField.setStyle(inputStyle(uiSettings));
+        registerUsernameField.setStyle(inputStyle(darkTheme));
 
         registerEmailField.setPromptText("Email");
         registerEmailField.setMaxWidth(Double.MAX_VALUE);
-        registerEmailField.setStyle(inputStyle(uiSettings));
+        registerEmailField.setStyle(inputStyle(darkTheme));
 
         registerPasswordField.setPromptText("Password");
         registerPasswordField.setMaxWidth(Double.MAX_VALUE);
-        registerPasswordField.setStyle(inputStyle(uiSettings));
+        registerPasswordField.setStyle(inputStyle(darkTheme));
 
         registerConfirmPasswordField.setPromptText("Confirm Password");
         registerConfirmPasswordField.setMaxWidth(Double.MAX_VALUE);
-        registerConfirmPasswordField.setStyle(inputStyle(uiSettings));
+        registerConfirmPasswordField.setStyle(inputStyle(darkTheme));
 
-        registerFeedbackLabel.setStyle("-fx-text-fill: #B42318; -fx-font-size: 12px; -fx-font-weight: 600;");
+        registerFeedbackLabel.setStyle("-fx-text-fill: " + danger(darkTheme) + "; -fx-font-size: 12px; -fx-font-weight: 700;");
 
-        HBox registerButtonRow = new HBox(10, createAccountButton, backToLoginButton);
-        registerButtonRow.setAlignment(Pos.CENTER);
+        HBox registerButtons = new HBox(10, createAccountButton, backToLoginButton);
+        registerButtons.setAlignment(Pos.CENTER);
         HBox.setHgrow(createAccountButton, Priority.ALWAYS);
         HBox.setHgrow(backToLoginButton, Priority.ALWAYS);
 
-        loginPane.getChildren().setAll(usernameField, passwordField, buttonRow, feedbackLabel);
+        loginPane.getChildren().setAll(usernameField, passwordField, loginButtons, feedbackLabel);
         loginPane.setAlignment(Pos.CENTER_LEFT);
 
         registerPane.getChildren().setAll(
@@ -127,45 +154,36 @@ public final class LoginView {
                 registerEmailField,
                 registerPasswordField,
                 registerConfirmPasswordField,
-                registerButtonRow,
+                registerButtons,
                 registerFeedbackLabel);
         registerPane.setAlignment(Pos.CENTER_LEFT);
         registerPane.setVisible(false);
         registerPane.setManaged(false);
 
         StackPane authStack = new StackPane(loginPane, registerPane);
-        authStack.setPrefWidth(360);
+        authStack.setPrefWidth(350);
         authStack.setMaxWidth(Double.MAX_VALUE);
 
-        VBox authCard = new VBox(16, heading, subtitle, authStack);
-        authCard.setPadding(new Insets(28));
-        authCard.setMaxWidth(430);
-        authCard.setStyle("-fx-background-color: " + panelColor(lightTheme) + ";"
-                + "-fx-background-radius: 24;"
-                + "-fx-border-radius: 24;"
-                + "-fx-border-color: " + (lightTheme ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.10)") + ";"
-                + "-fx-border-width: 1.2;");
-        authCard.setEffect(new javafx.scene.effect.DropShadow(30, javafx.scene.paint.Color.rgb(15, 23, 42, 0.20)));
+        VBox authCard = new VBox(14, authOverline, authHeading, authStack);
+        authCard.setPadding(new Insets(24));
+        authCard.setMaxWidth(420);
+        authCard.setStyle(
+                "-fx-background-color: " + cardSurface(darkTheme) + ";"
+                        + "-fx-background-radius: 24;"
+                        + "-fx-border-radius: 24;"
+                        + "-fx-border-width: 1.5;"
+                        + "-fx-border-color: " + borderColor(darkTheme) + ";");
+        authCard.setEffect(new DropShadow(30, Color.web(gameNeon("pong"), 0.15)));
 
-        VBox brandCard = new VBox(16, brandTitle, brandTag, brandDetail);
-        brandCard.setPadding(new Insets(30));
-        brandCard.setMaxWidth(420);
-        brandCard.setStyle("-fx-background-color: " + glassTone(lightTheme) + ";"
-                + "-fx-background-radius: 26;"
-                + "-fx-border-radius: 26;"
-                + "-fx-border-color: " + (lightTheme ? "rgba(255,255,255,0.60)" : "rgba(255,255,255,0.12)") + ";"
-                + "-fx-border-width: 1.1;");
-        brandCard.setEffect(new javafx.scene.effect.DropShadow(24, javafx.scene.paint.Color.rgb(15, 23, 42, 0.16)));
-
-        HBox layout = new HBox(24, brandCard, authCard);
-        layout.setAlignment(Pos.CENTER);
-        layout.setMaxWidth(920);
+        HBox content = new HBox(24, brandCard, authCard);
+        content.setAlignment(Pos.CENTER);
+        content.setMaxWidth(920);
         HBox.setHgrow(authCard, Priority.ALWAYS);
 
-        VBox root = new VBox(layout);
-        root.setAlignment(Pos.CENTER);
+        VBox root = new VBox(content);
         root.setPadding(new Insets(28));
-        root.setStyle("-fx-background-color: " + backgroundGradient(uiSettings) + ";");
+        root.setAlignment(Pos.CENTER);
+        root.setStyle("-fx-background-color: " + appBackground(darkTheme) + ";");
 
         systemController.setStatusMessageListener(message -> {
             if (registerPane.isVisible()) {
@@ -200,7 +218,7 @@ public final class LoginView {
 
         String result = systemController.handleRegistration(username, email, password, confirmPassword);
         if (result == null) {
-            feedbackLabel.setStyle("-fx-text-fill: #027A48; -fx-font-size: 12px; -fx-font-weight: 600;");
+            feedbackLabel.setStyle("-fx-text-fill: #00C25F; -fx-font-size: 12px; -fx-font-weight: 700;");
             feedbackLabel.setText("Registration successful. You can login now.");
             usernameField.setText(username);
             passwordField.clear();
@@ -214,6 +232,8 @@ public final class LoginView {
 
     private void showRegisterPane() {
         feedbackLabel.setText("");
+        feedbackLabel.setStyle("-fx-text-fill: " + danger(systemController.getUiSettings().getThemeMode() != UiSettings.ThemeMode.LIGHT)
+                + "; -fx-font-size: 12px; -fx-font-weight: 700;");
         loginPane.setVisible(false);
         loginPane.setManaged(false);
         registerPane.setVisible(true);
@@ -228,56 +248,90 @@ public final class LoginView {
         registerPane.setManaged(false);
     }
 
-    private String inputStyle(UiSettings uiSettings) {
-        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        return "-fx-background-color: " + (lightTheme ? "#EEF2FF" : "#1A2639") + ";"
-                + "-fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + ";"
-                + "-fx-prompt-text-fill: " + (lightTheme ? "#94A3B8" : "#7B8DA8") + ";"
-                + "-fx-font-size: 14px;"
-                + "-fx-background-radius: 14;"
-                + "-fx-padding: 12 14 12 14;";
+    private Label createChip(String text, boolean darkTheme) {
+        Label chip = new Label(text);
+        chip.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-letter-spacing: 1.2px;"
+                + "-fx-text-fill: " + gameNeon("pong") + ";"
+                + "-fx-background-color: transparent;"
+                + "-fx-border-color: " + gameNeon("pong") + ";"
+                + "-fx-border-width: 1;"
+                + "-fx-border-radius: 20;"
+                + "-fx-background-radius: 20;"
+                + "-fx-padding: 4 10 4 10;");
+        chip.setEffect(new DropShadow(10, Color.web(gameNeon("pong"), darkTheme ? 0.22 : 0.14)));
+        return chip;
     }
 
-    private String primaryButtonStyle(UiSettings uiSettings) {
-        String accentRight = switch (uiSettings.getAccentStyle()) {
-            case LAVENDER -> "#D7C2FF";
-            case CORAL -> "#FFBEA8";
-            default -> "#BFD4FF";
-        };
-        return "-fx-background-color: linear-gradient(to right, #B8E9CF, " + accentRight + ");"
-                + "-fx-text-fill: #0F172A;"
+    private String inputStyle(boolean darkTheme) {
+        return "-fx-background-color: " + (darkTheme ? "#0F1D3A" : "#EEF5FF") + ";"
+                + "-fx-text-fill: " + primaryText(darkTheme) + ";"
+                + "-fx-prompt-text-fill: " + secondaryText(darkTheme) + ";"
                 + "-fx-font-size: 14px;"
-                + "-fx-font-weight: 700;"
-                + "-fx-background-radius: 14;"
-                + "-fx-padding: 11 18 11 18;";
+                + "-fx-border-color: " + gameNeon("pong") + ";"
+                + "-fx-border-width: 1.1;"
+                + "-fx-background-radius: 12;"
+                + "-fx-border-radius: 12;"
+                + "-fx-padding: 11 12 11 12;";
     }
 
-    private String secondaryButtonStyle(UiSettings uiSettings) {
-        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        return "-fx-background-color: " + (lightTheme ? "#DCE5F5" : "#22324A") + ";"
-                + "-fx-text-fill: " + (lightTheme ? "#334155" : "#D0D9E8") + ";"
-                + "-fx-font-size: 14px;"
-                + "-fx-font-weight: 600;"
-                + "-fx-background-radius: 14;"
-                + "-fx-padding: 11 18 11 18;";
+    private String primaryButtonStyle() {
+        return "-fx-background-color: linear-gradient(to right, #00FF87, #6BFFB8);"
+                + "-fx-text-fill: #060D1C;"
+                + "-fx-font-size: 13px;"
+                + "-fx-font-weight: 900;"
+                + "-fx-letter-spacing: 1px;"
+                + "-fx-background-radius: 13;"
+                + "-fx-padding: 11 16 11 16;";
     }
 
-    private String backgroundGradient(UiSettings uiSettings) {
-        if (uiSettings.getThemeMode() == UiSettings.ThemeMode.DUSK) {
-            return "linear-gradient(to bottom right, #0B1324, #111B33, #1C2A4A)";
+    private String ghostButtonStyle(boolean darkTheme) {
+        return "-fx-background-color: " + (darkTheme ? "rgba(10,18,40,0.68)" : "rgba(223,235,248,0.85)") + ";"
+                + "-fx-text-fill: " + secondaryText(darkTheme) + ";"
+                + "-fx-font-size: 13px;"
+                + "-fx-font-weight: 800;"
+                + "-fx-background-radius: 13;"
+                + "-fx-border-radius: 13;"
+                + "-fx-border-color: " + borderColor(darkTheme) + ";"
+                + "-fx-border-width: 1;"
+                + "-fx-padding: 11 16 11 16;";
+    }
+
+    private String appBackground(boolean darkTheme) {
+        if (darkTheme) {
+            return "linear-gradient(to bottom right, #060D1C, #091633, #0F1B42)";
         }
-        return switch (uiSettings.getAccentStyle()) {
-            case LAVENDER -> "linear-gradient(to bottom right, #EDEFFA, #E8EAFE, #EDE5FF)";
-            case CORAL -> "linear-gradient(to bottom right, #EEF0FA, #FDEFE8, #FFE8DD)";
-            default -> "linear-gradient(to bottom right, #EEF2FA, #E7EEFF, #E7F4F0)";
+        return "linear-gradient(to bottom right, #F0FAF5, #EEF5FF, #EFF4FF)";
+    }
+
+    private String cardSurface(boolean darkTheme) {
+        return darkTheme ? "rgba(10,18,40,0.94)" : "rgba(248,252,255,0.92)";
+    }
+
+    private String brandCardSurface(boolean darkTheme) {
+        return darkTheme ? "rgba(8,18,38,0.72)" : "rgba(240,250,245,0.90)";
+    }
+
+    private String primaryText(boolean darkTheme) {
+        return darkTheme ? "#E8F4FF" : "#0D1A36";
+    }
+
+    private String secondaryText(boolean darkTheme) {
+        return darkTheme ? "#4A6A8A" : "#607080";
+    }
+
+    private String borderColor(boolean darkTheme) {
+        return darkTheme ? "rgba(0,184,255,0.22)" : "rgba(0,100,200,0.16)";
+    }
+
+    private String danger(boolean darkTheme) {
+        return darkTheme ? "#FF4D8F" : "#CC1060";
+    }
+
+    private String gameNeon(String gameId) {
+        return switch (gameId) {
+            case "snake" -> "#00FF87";
+            case "pong" -> "#00E5FF";
+            default -> "#B44FFF";
         };
-    }
-
-    private String panelColor(boolean lightTheme) {
-        return lightTheme ? "rgba(252, 252, 255, 0.68)" : "rgba(20, 30, 48, 0.85)";
-    }
-
-    private String glassTone(boolean lightTheme) {
-        return lightTheme ? "rgba(240, 247, 255, 0.54)" : "rgba(18, 28, 44, 0.70)";
     }
 }

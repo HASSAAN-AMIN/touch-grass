@@ -19,6 +19,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
@@ -85,16 +86,17 @@ public final class GameView {
     }
 
     public Parent createRoot() {
-        UiSettings uiSettings = systemController.getUiSettings();
-        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
+        boolean darkTheme = systemController.getUiSettings().getThemeMode() != UiSettings.ThemeMode.LIGHT;
+        String neon = gameNeon();
 
-        hudPrimaryLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 800; -fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + ";");
-        hudScoreLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: " + (lightTheme ? "#475569" : "#9FB1CD") + ";");
-        hudHintLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#8EA0BF") + ";");
-        hudStatusLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #C81E5B;");
+        hudPrimaryLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: 900; -fx-letter-spacing: 1.5px; -fx-text-fill: " + primaryText(darkTheme) + ";");
+        hudPrimaryLabel.setEffect(new DropShadow(12, Color.web(neon, 0.50)));
+        hudScoreLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 800; -fx-text-fill: " + neon + ";");
+        hudHintLabel.setStyle("-fx-font-size: 11.5px; -fx-text-fill: " + secondaryText(darkTheme) + ";");
+        hudStatusLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: " + danger(darkTheme) + ";");
 
-        Button quitButton = new Button("Quit");
-        quitButton.setStyle(secondaryButtonStyle(uiSettings));
+        Button quitButton = new Button("QUIT");
+        quitButton.setStyle(navButtonStyle(darkTheme));
         quitButton.setOnAction(event -> returnToLobby());
 
         VBox leftHud = new VBox(4, hudPrimaryLabel, hudScoreLabel);
@@ -103,13 +105,14 @@ public final class GameView {
         HBox topBar = new HBox(12, leftHud, spacer, quitButton);
         topBar.setPadding(new Insets(14, 18, 8, 18));
         topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setStyle("-fx-background-color: " + topBarBg(darkTheme) + "; -fx-border-color: transparent transparent rgba(0,229,255,0.10) transparent; -fx-border-width: 0 0 1 0;");
 
         canvas.setOnMouseClicked(this::handleCanvasClicked);
         VBox canvasContainer = new VBox(canvas);
         canvasContainer.setPadding(new Insets(8, 20, 8, 20));
         canvasContainer.setAlignment(Pos.CENTER);
 
-        setupGameOverOverlay();
+        setupGameOverOverlay(darkTheme);
         playArea.getChildren().setAll(canvasContainer, gameOverOverlay);
 
         HBox bottomBar = new HBox(18, hudHintLabel, hudStatusLabel);
@@ -119,7 +122,7 @@ public final class GameView {
         root.setTop(topBar);
         root.setCenter(playArea);
         root.setBottom(bottomBar);
-        root.setStyle("-fx-background-color: " + (lightTheme ? "#EEF2FA" : "#0B1324") + ";");
+        root.setStyle("-fx-background-color: " + appBackground(darkTheme) + ";");
         root.setFocusTraversable(true);
 
         playArea.widthProperty().addListener((obs, oldValue, newValue) -> resizeCanvas());
@@ -191,18 +194,28 @@ public final class GameView {
     }
 
     private void renderFrame(GraphicsContext graphics) {
-        UiSettings uiSettings = systemController.getUiSettings();
+        boolean darkTheme = systemController.getUiSettings().getThemeMode() != UiSettings.ThemeMode.LIGHT;
         double canvasWidth = canvas.getWidth();
         double canvasHeight = canvas.getHeight();
-        graphics.setFill(uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT
-                ? Color.web("#EEF2FA")
-                : Color.web("#0B1324"));
+        graphics.setFill(darkTheme ? Color.web("#070D1C") : Color.web("#EEF5FF"));
         graphics.fillRect(0, 0, canvasWidth, canvasHeight);
-        drawAmbientEffects(graphics, uiSettings, canvasWidth, canvasHeight);
+        drawDotGrid(graphics, darkTheme, canvasWidth, canvasHeight);
+        drawAmbientEffects(graphics, darkTheme, canvasWidth, canvasHeight);
 
-        drawPongIfActive(graphics, canvasWidth, canvasHeight);
-        drawSnakeIfActive(graphics, canvasWidth, canvasHeight);
-        drawTicTacToeIfActive(graphics, canvasWidth, canvasHeight);
+        drawPongIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+        drawSnakeIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+        drawTicTacToeIfActive(graphics, canvasWidth, canvasHeight, darkTheme);
+    }
+
+    private void drawDotGrid(GraphicsContext graphics, boolean darkTheme, double width, double height) {
+        double spacing = 26;
+        double radius = 1.5;
+        graphics.setFill(darkTheme ? Color.web("#0F1E38") : Color.web("#D1DEEF"));
+        for (double y = 0; y < height; y += spacing) {
+            for (double x = 0; x < width; x += spacing) {
+                graphics.fillOval(x - radius, y - radius, radius * 2, radius * 2);
+            }
+        }
     }
 
     private void updateHud() {
@@ -211,29 +224,28 @@ public final class GameView {
 
         String scoreText;
         if (isSnakeGame() && activeSession instanceof LocalSession localSession && localSession.getSnakeLogic() != null) {
-            scoreText = "Score: " + localSession.getSnakeLogic().getScore()
-                    + " | Length: " + localSession.getSnakeLogic().getSnakeBody().size();
+            scoreText = "SCORE " + localSession.getSnakeLogic().getScore() + " | LENGTH " + localSession.getSnakeLogic().getSnakeBody().size();
         } else if (isPongGame()) {
             GameState state = activeSession.getCurrentGameState();
             scoreText = state == null
-                    ? "Syncing..."
-                    : "Score " + state.scorePlayer1() + " : " + state.scorePlayer2();
+                    ? "SYNCING..."
+                    : "P1 " + state.scorePlayer1() + "  :  P2 " + state.scorePlayer2();
         } else if (isTicTacToeGame() && activeSession instanceof LocalSession localSession && localSession.getTicTacToeLogic() != null) {
             TicTacToeLogic logic = localSession.getTicTacToeLogic();
             scoreText = logic.isGameOver()
-                    ? (logic.isDraw() ? "Result: Draw" : "Winner: " + logic.getWinner())
-                    : "Turn: " + logic.getCurrentPlayer();
+                    ? (logic.isDraw() ? "RESULT DRAW" : "WINNER " + logic.getWinner())
+                    : "TURN " + logic.getCurrentPlayer();
         } else {
-            scoreText = "Session running";
+            scoreText = "SESSION ACTIVE";
         }
         if (uiSettings.isShowFps()) {
             scoreText += " | " + Math.round(fps) + " FPS";
         }
         hudScoreLabel.setText(scoreText);
-        hudHintLabel.setText("Controls: WASD + Arrows | P = Pause | ESC = Quit");
+        hudHintLabel.setText("WASD + ARROWS | P PAUSE | ESC QUIT");
 
         if (paused) {
-            hudStatusLabel.setText("Paused");
+            hudStatusLabel.setText("PAUSED");
         } else if (!inlineStatusMessage.isBlank()) {
             hudStatusLabel.setText(inlineStatusMessage);
         } else {
@@ -294,7 +306,7 @@ public final class GameView {
         };
     }
 
-    private void drawSnakeIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight) {
+    private void drawSnakeIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
         if (!isSnakeGame() || !(activeSession instanceof LocalSession localSession)) {
             return;
         }
@@ -308,20 +320,16 @@ public final class GameView {
         double startY = (canvasHeight - boardSize) / 2.0;
         double tileSize = boardSize / SnakeLogic.GRID_WIDTH;
 
-        graphics.setFill(Color.web("#F9FBFF"));
-        graphics.fillRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 26, 26);
-        graphics.setFill(Color.web("#E8EEF7"));
+        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
+        graphics.fillRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
+        graphics.setStroke(Color.web(gameNeon("snake"), 0.92));
+        graphics.setLineWidth(1.5);
+        graphics.strokeRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
+
+        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
         graphics.fillRoundRect(startX, startY, boardSize, boardSize, 18, 18);
 
-        graphics.setStroke(Color.web("#D6E1F0"));
-        graphics.setLineWidth(1);
-        for (int i = 1; i < SnakeLogic.GRID_WIDTH; i++) {
-            double x = startX + (i * tileSize);
-            graphics.strokeLine(x, startY, x, startY + boardSize);
-            graphics.strokeLine(startX, x - startX + startY, startX + boardSize, x - startX + startY);
-        }
-
-        graphics.setFill(Color.web("#6CA95A"));
+        graphics.setFill(Color.web(gameNeon("snake")));
         for (SnakeLogic.Cell cell : snakeLogic.getSnakeBody()) {
             double x = startX + (cell.x() * tileSize) + 2;
             double y = startY + (cell.y() * tileSize) + 2;
@@ -331,31 +339,33 @@ public final class GameView {
 
         SnakeLogic.Cell head = snakeLogic.getSnakeBody().isEmpty() ? null : snakeLogic.getSnakeBody().get(0);
         if (head != null) {
-            graphics.setFill(Color.web("#4F8E43"));
-            double hx = startX + (head.x() * tileSize) + 1.5;
-            double hy = startY + (head.y() * tileSize) + 1.5;
-            double hSize = tileSize - 3;
-            graphics.fillRoundRect(hx, hy, hSize, hSize, 9, 9);
+            double hx = startX + (head.x() * tileSize) + 1.6;
+            double hy = startY + (head.y() * tileSize) + 1.6;
+            double hSize = tileSize - 3.2;
+            graphics.setFill(Color.web(gameNeon("snake"), 0.35));
+            graphics.fillRoundRect(hx - 3, hy - 3, hSize + 6, hSize + 6, 10, 10);
+            graphics.setFill(Color.web(gameNeon("snake")));
+            graphics.fillRoundRect(hx, hy, hSize, hSize, 8, 8);
         }
 
         SnakeLogic.Cell food = snakeLogic.getFood();
         double foodX = startX + (food.x() * tileSize) + 2;
         double foodY = startY + (food.y() * tileSize) + 2;
         double foodSize = tileSize - 4;
-        graphics.setFill(Color.web("#E55934"));
+        graphics.setFill(Color.web("#FF8C42"));
         graphics.fillRoundRect(foodX, foodY, foodSize, foodSize, 10, 10);
     }
 
-    private void drawPongIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight) {
+    private void drawPongIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
         if (!isPongGame()) {
             return;
         }
 
         GameState state = activeSession.getCurrentGameState();
         if (state == null) {
-            graphics.setFill(Color.web("#64748B"));
+            graphics.setFill(Color.web("#4A6A8A"));
             graphics.setFont(Font.font("Consolas", 20));
-            graphics.fillText("Waiting for synced game state...", canvasWidth * 0.30, canvasHeight * 0.52);
+            graphics.fillText("WAITING FOR NETWORK STATE...", canvasWidth * 0.27, canvasHeight * 0.52);
             return;
         }
 
@@ -367,19 +377,23 @@ public final class GameView {
         double startX = (canvasWidth - drawWidth) / 2.0;
         double startY = (canvasHeight - drawHeight) / 2.0;
 
-        graphics.setFill(Color.web("#F9FBFF"));
-        graphics.fillRoundRect(startX - 16, startY - 16, drawWidth + 32, drawHeight + 32, 26, 26);
-        graphics.setFill(Color.web("#EEF3FA"));
+        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
+        graphics.fillRoundRect(startX - 16, startY - 16, drawWidth + 32, drawHeight + 32, 24, 24);
+        graphics.setStroke(Color.web(gameNeon("pong"), 0.90));
+        graphics.setLineWidth(1.5);
+        graphics.strokeRoundRect(startX - 16, startY - 16, drawWidth + 32, drawHeight + 32, 24, 24);
+
+        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
         graphics.fillRoundRect(startX, startY, drawWidth, drawHeight, 18, 18);
 
-        graphics.setStroke(Color.web("#BAC8DC"));
+        graphics.setStroke(Color.web(gameNeon("pong"), 0.60));
         graphics.setLineWidth(Math.max(2, 3 * scale));
         graphics.setLineDashes(12 * scale, 12 * scale);
         double centerX = startX + (drawWidth / 2.0);
         graphics.strokeLine(centerX, startY + (12 * scale), centerX, startY + drawHeight - (12 * scale));
         graphics.setLineDashes(0);
 
-        graphics.setFill(Color.web("#7FB069"));
+        graphics.setFill(Color.web(gameNeon("snake")));
         graphics.fillRoundRect(
                 startX + (24 * scale),
                 startY + (state.paddle1Y() * scale),
@@ -387,7 +401,8 @@ public final class GameView {
                 PongLogic.PADDLE_HEIGHT * scale,
                 10 * scale,
                 10 * scale);
-        graphics.setFill(Color.web("#D1B3FF"));
+
+        graphics.setFill(Color.web(gameNeon("tic-tac-toe")));
         graphics.fillRoundRect(
                 startX + ((PongLogic.FIELD_WIDTH - 24 - PongLogic.PADDLE_WIDTH) * scale),
                 startY + (state.paddle2Y() * scale),
@@ -396,7 +411,7 @@ public final class GameView {
                 10 * scale,
                 10 * scale);
 
-        graphics.setFill(Color.web("#E55934"));
+        graphics.setFill(Color.web("#FF8C42"));
         graphics.fillRoundRect(
                 startX + (state.ballX() * scale),
                 startY + (state.ballY() * scale),
@@ -404,9 +419,17 @@ public final class GameView {
                 PongLogic.BALL_SIZE * scale,
                 10 * scale,
                 10 * scale);
+
+        graphics.setFont(Font.font("Consolas", Math.max(18, 24 * scale)));
+        graphics.setFill(Color.web("#E8F4FF"));
+        graphics.fillText(String.valueOf(state.scorePlayer1()), centerX - (36 * scale), startY + (42 * scale));
+        graphics.setFill(Color.web("#4A6A8A"));
+        graphics.fillText(":", centerX - (6 * scale), startY + (42 * scale));
+        graphics.setFill(Color.web("#E8F4FF"));
+        graphics.fillText(String.valueOf(state.scorePlayer2()), centerX + (14 * scale), startY + (42 * scale));
     }
 
-    private void drawTicTacToeIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight) {
+    private void drawTicTacToeIfActive(GraphicsContext graphics, double canvasWidth, double canvasHeight, boolean darkTheme) {
         if (!isTicTacToeGame() || !(activeSession instanceof LocalSession localSession)) {
             return;
         }
@@ -420,12 +443,16 @@ public final class GameView {
         double startY = (canvasHeight - boardSize) / 2.0;
         double cellSize = boardSize / TicTacToeLogic.GRID_SIZE;
 
-        graphics.setFill(Color.web("#F9FBFF"));
-        graphics.fillRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 26, 26);
-        graphics.setFill(Color.web("#EEF2F7"));
+        graphics.setFill(darkTheme ? Color.web("rgba(8,14,30,0.94)") : Color.web("rgba(248,252,255,0.94)"));
+        graphics.fillRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
+        graphics.setStroke(Color.web(gameNeon("tic-tac-toe"), 0.90));
+        graphics.setLineWidth(1.5);
+        graphics.strokeRoundRect(startX - 16, startY - 16, boardSize + 32, boardSize + 32, 24, 24);
+
+        graphics.setFill(darkTheme ? Color.web("#081429") : Color.web("#ECF4FF"));
         graphics.fillRoundRect(startX, startY, boardSize, boardSize, 18, 18);
 
-        graphics.setStroke(Color.web("#A8B3C2"));
+        graphics.setStroke(Color.web(gameNeon("tic-tac-toe"), 0.70));
         graphics.setLineWidth(Math.max(2, boardSize * 0.006));
         for (int i = 1; i < TicTacToeLogic.GRID_SIZE; i++) {
             double pos = startX + (i * cellSize);
@@ -442,7 +469,7 @@ public final class GameView {
                 if (value == ' ') {
                     continue;
                 }
-                graphics.setFill(value == 'X' ? Color.web("#7FB069") : Color.web("#6EA8FE"));
+                graphics.setFill(value == 'X' ? Color.web(gameNeon("snake")) : Color.web(gameNeon("pong")));
                 double textX = startX + (col * cellSize) + (cellSize * 0.34);
                 double textY = startY + (row * cellSize) + (cellSize * 0.70);
                 graphics.fillText(String.valueOf(value), textX, textY);
@@ -475,15 +502,25 @@ public final class GameView {
 
     private String gameName() {
         if (isSnakeGame()) {
-            return "Snake";
+            return "SNAKE";
         }
         if (isPongGame()) {
-            return "Pong";
+            return "PONG";
         }
         if (isTicTacToeGame()) {
-            return "Tic-Tac-Toe";
+            return "TIC-TAC-TOE";
         }
-        return "Game";
+        return "GAME";
+    }
+
+    private String gameNeon() {
+        if (isSnakeGame()) {
+            return gameNeon("snake");
+        }
+        if (isPongGame()) {
+            return gameNeon("pong");
+        }
+        return gameNeon("tic-tac-toe");
     }
 
     private boolean isLocalCoOpPong() {
@@ -548,20 +585,29 @@ public final class GameView {
         inlineStatusMessage = "";
     }
 
-    private void setupGameOverOverlay() {
-        Label title = new Label("Game Over");
-        title.setStyle("-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #1F2937;");
-        gameOverScoreLabel.setStyle("-fx-font-size: 17px; -fx-font-weight: 600; -fx-text-fill: #4B5563;");
+    private void setupGameOverOverlay(boolean darkTheme) {
+        Label title = new Label("GAME OVER");
+        title.setStyle("-fx-font-size: 38px; -fx-font-weight: 900; -fx-letter-spacing: 3px; -fx-text-fill: " + danger(darkTheme) + ";");
+        title.setEffect(new DropShadow(20, Color.web(danger(darkTheme), 0.62)));
 
-        Button saveAndQuitButton = new Button("Save Score & Quit");
-        saveAndQuitButton.setStyle("-fx-background-color: linear-gradient(to right, #B8E9CF, #D8C2FF);"
-                + "-fx-text-fill: #0F172A; -fx-font-size: 14px; -fx-font-weight: 700;"
+        gameOverScoreLabel.setStyle("-fx-font-size: 17px; -fx-font-weight: 800; -fx-text-fill: " + primaryText(darkTheme) + ";");
+
+        Button saveAndQuitButton = new Button("SAVE SCORE");
+        saveAndQuitButton.setStyle("-fx-background-color: linear-gradient(to right, #00FF87, #6BFFB8);"
+                + "-fx-text-fill: #060D1C; -fx-font-size: 14px; -fx-font-weight: 900;"
                 + "-fx-background-radius: 14; -fx-padding: 10 18 10 18;");
+        saveAndQuitButton.setEffect(new DropShadow(18, Color.web(gameNeon("snake"), 0.30)));
         saveAndQuitButton.setOnAction(event -> handleGameOverAction(true));
 
-        Button quitButton = new Button("Quit to Lobby");
-        quitButton.setStyle("-fx-background-color: #E3EBF7; -fx-text-fill: #334155; -fx-font-size: 14px; -fx-font-weight: 700;"
-                + "-fx-background-radius: 14; -fx-padding: 10 18 10 18;");
+        Button quitButton = new Button("QUIT TO LOBBY");
+        quitButton.setStyle("-fx-background-color: rgba(45, 10, 28, 0.90);"
+                + "-fx-text-fill: " + danger(darkTheme) + ";"
+                + "-fx-font-size: 13px; -fx-font-weight: 900;"
+                + "-fx-border-color: " + danger(darkTheme) + ";"
+                + "-fx-border-width: 1.2;"
+                + "-fx-background-radius: 14;"
+                + "-fx-border-radius: 14;"
+                + "-fx-padding: 10 18 10 18;");
         quitButton.setOnAction(event -> handleGameOverAction(false));
 
         HBox actions = new HBox(10, saveAndQuitButton, quitButton);
@@ -571,27 +617,28 @@ public final class GameView {
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(24));
         card.setMaxWidth(420);
-        card.setStyle("-fx-background-color: rgba(255,255,255,0.90); -fx-background-radius: 20;");
+        card.setStyle("-fx-background-color: rgba(8,14,30,0.95);"
+                + "-fx-background-radius: 26;"
+                + "-fx-border-radius: 26;"
+                + "-fx-border-width: 1.5;"
+                + "-fx-border-color: rgba(255,77,143,0.35);");
+        card.setEffect(new DropShadow(36, Color.web(danger(darkTheme), 0.22)));
 
         gameOverOverlay.getChildren().setAll(card);
         gameOverOverlay.setAlignment(Pos.CENTER);
-        gameOverOverlay.setStyle("-fx-background-color: rgba(238, 242, 250, 0.72);");
+        gameOverOverlay.setStyle("-fx-background-color: rgba(5,10,22,0.72);");
         gameOverOverlay.setVisible(false);
         gameOverOverlay.setManaged(false);
     }
 
-    private void drawAmbientEffects(GraphicsContext graphics, UiSettings uiSettings, double canvasWidth, double canvasHeight) {
-        if (!uiSettings.isAmbientMotion()) {
+    private void drawAmbientEffects(GraphicsContext graphics, boolean darkTheme, double canvasWidth, double canvasHeight) {
+        if (!systemController.getUiSettings().isAmbientMotion()) {
             return;
         }
         long time = System.nanoTime() / 6_000_000L;
         double waveX = (time % 220) * 4.1;
         double waveY = (time % 180) * 3.0;
-        Color glow = switch (uiSettings.getAccentStyle()) {
-            case LAVENDER -> Color.web("#CBB7FF", 0.11);
-            case CORAL -> Color.web("#FFC2B3", 0.11);
-            default -> Color.web("#BDE7C5", 0.11);
-        };
+        Color glow = darkTheme ? Color.web(gameNeon(), 0.08) : Color.web(gameNeon(), 0.06);
         graphics.setFill(glow);
         graphics.fillOval(waveX - 110, 26, 220, 220);
         graphics.fillOval(canvasWidth - waveX - 120, canvasHeight - 230, 240, 240);
@@ -600,7 +647,7 @@ public final class GameView {
 
     private void showGameOverOverlay() {
         gameOverOverlayShown = true;
-        gameOverScoreLabel.setText("Final Score: " + activeSession.getScore());
+        gameOverScoreLabel.setText("FINAL SCORE: " + activeSession.getScore());
         gameOverOverlay.setVisible(true);
         gameOverOverlay.setManaged(true);
     }
@@ -619,11 +666,46 @@ public final class GameView {
         systemController.handleGameOver(gameId, activeSession.getScore(), saveScore);
     }
 
-    private String secondaryButtonStyle(UiSettings uiSettings) {
-        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        return "-fx-background-color: " + (lightTheme ? "#DCE5F5" : "#253650") + ";"
-                + "-fx-text-fill: " + (lightTheme ? "#334155" : "#D0D9E8") + ";"
-                + "-fx-font-size: 13px; -fx-font-weight: 700;"
-                + "-fx-background-radius: 14; -fx-padding: 9 16 9 16;";
+    private String appBackground(boolean darkTheme) {
+        return darkTheme ? "#060D1C" : "#EEF5FF";
+    }
+
+    private String topBarBg(boolean darkTheme) {
+        return darkTheme ? "rgba(6,13,28,0.97)" : "rgba(240,250,245,0.96)";
+    }
+
+    private String navButtonStyle(boolean darkTheme) {
+        return "-fx-background-color: " + topBarBg(darkTheme) + ";"
+                + "-fx-text-fill: " + primaryText(darkTheme) + ";"
+                + "-fx-font-size: 12px;"
+                + "-fx-font-weight: 900;"
+                + "-fx-letter-spacing: 1px;"
+                + "-fx-border-color: rgba(0,184,255,0.20);"
+                + "-fx-border-width: 1;"
+                + "-fx-background-radius: 12;"
+                + "-fx-border-radius: 12;"
+                + "-fx-padding: 10 14 10 14;";
+    }
+
+    private String primaryText(boolean darkTheme) {
+        return darkTheme ? "#E8F4FF" : "#0D1A36";
+    }
+
+    private String secondaryText(boolean darkTheme) {
+        return darkTheme ? "#4A6A8A" : "#607080";
+    }
+
+    private String danger(boolean darkTheme) {
+        return darkTheme ? "#FF4D8F" : "#CC1060";
+    }
+
+    private String gameNeon(String gameId) {
+        if ("snake".equalsIgnoreCase(gameId)) {
+            return "#00FF87";
+        }
+        if ("pong".equalsIgnoreCase(gameId)) {
+            return "#00E5FF";
+        }
+        return "#B44FFF";
     }
 }
