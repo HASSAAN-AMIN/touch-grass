@@ -1,6 +1,8 @@
 package com.touchgrass.bl;
 
+import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
+import com.touchgrass.bl.games.PongLogic;
 import com.touchgrass.bl.games.SnakeLogic;
 
 public final class LocalSession extends Session {
@@ -8,6 +10,7 @@ public final class LocalSession extends Session {
     private String p1Controls;
     private String p2Controls;
     private SnakeLogic snakeLogic;
+    private PongLogic pongLogic;
 
     public LocalSession(String sessionId, String gameId, String mode, String p1Controls, String p2Controls) {
         super(sessionId, mode);
@@ -47,13 +50,28 @@ public final class LocalSession extends Session {
     public void handleInput(InputCommand inputCommand, boolean pressed) {
         if (snakeLogic != null && pressed) {
             snakeLogic.processCommand(inputCommand);
+            return;
         }
+        if (pongLogic != null && pressed) {
+            pongLogic.processCommand(inputCommand, 1);
+        }
+    }
+
+    public void handleInputForPlayer(InputCommand inputCommand, int playerNumber, boolean pressed) {
+        if (pongLogic == null || !pressed) {
+            return;
+        }
+        pongLogic.processCommand(inputCommand, playerNumber);
     }
 
     @Override
     public void tick() {
         if (snakeLogic != null) {
             snakeLogic.update();
+            return;
+        }
+        if (pongLogic != null) {
+            pongLogic.update();
         }
     }
 
@@ -67,6 +85,14 @@ public final class LocalSession extends Session {
         return snakeLogic == null ? 0 : snakeLogic.getScore();
     }
 
+    @Override
+    public GameState getCurrentGameState() {
+        if (pongLogic == null) {
+            return null;
+        }
+        return pongLogic.toGameState();
+    }
+
     public SnakeLogic getSnakeLogic() {
         return snakeLogic;
     }
@@ -74,6 +100,10 @@ public final class LocalSession extends Session {
     private void initializeGameLogic() {
         if ("snake".equalsIgnoreCase(gameId)) {
             snakeLogic = new SnakeLogic();
+            return;
+        }
+        if ("pong".equalsIgnoreCase(gameId)) {
+            pongLogic = new PongLogic();
         }
     }
 }

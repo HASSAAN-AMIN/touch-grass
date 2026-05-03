@@ -6,6 +6,8 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+import java.util.List;
+
 public final class SystemController {
     private static final int LAN_PORT = 8080;
     private final Stage stage;
@@ -80,6 +82,10 @@ public final class SystemController {
             return;
         }
         scene.setRoot(mainLobbyView.createRoot());
+    }
+
+    public List<String> getTopScores() {
+        return leaderboardManager.getTopScores();
     }
 
     private String normalizeMode(String mode) {

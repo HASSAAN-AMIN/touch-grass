@@ -21,6 +21,7 @@ import javafx.stage.Stage;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 
 public final class MainLobbyView {
     private final Stage stage;
@@ -29,6 +30,7 @@ public final class MainLobbyView {
     private final VBox gamesPane;
     private final VBox modePane;
     private final VBox lanPane;
+    private final VBox leaderboardPane;
     private final Label selectedGameLabel;
     private final Label lanStatusLabel;
     private final TextField lanIpField;
@@ -42,6 +44,7 @@ public final class MainLobbyView {
         this.gamesPane = new VBox(16);
         this.modePane = new VBox(14);
         this.lanPane = new VBox(14);
+        this.leaderboardPane = new VBox(14);
         this.selectedGameLabel = new Label();
         this.lanStatusLabel = new Label();
         this.lanIpField = new TextField();
@@ -82,8 +85,9 @@ public final class MainLobbyView {
         setupGamesPane(sectionLabel);
         setupModePane();
         setupLanPane();
+        setupLeaderboardPane();
 
-        centerStack.getChildren().setAll(gamesPane, modePane, lanPane);
+        centerStack.getChildren().setAll(gamesPane, modePane, lanPane, leaderboardPane);
         showGamesPane();
 
         BorderPane root = new BorderPane();
@@ -102,7 +106,14 @@ public final class MainLobbyView {
                 createGameCard("Pong", "pong"),
                 createGameCard("Tic-Tac-Toe", "tic-tac-toe"));
 
-        gamesPane.getChildren().setAll(sectionLabel, grid);
+        Button leaderboardButton = new Button("View Leaderboard");
+        leaderboardButton.setStyle(
+                "-fx-background-color: linear-gradient(to right, #D8E4FF, #E5D5FF);"
+                        + "-fx-text-fill: #1f2933; -fx-font-size: 14px;"
+                        + "-fx-font-weight: 700; -fx-background-radius: 12; -fx-padding: 11 18 11 18;");
+        leaderboardButton.setOnAction(event -> showLeaderboardPane());
+
+        gamesPane.getChildren().setAll(sectionLabel, grid, leaderboardButton);
         gamesPane.setPadding(new Insets(0, 24, 24, 24));
         gamesPane.setAlignment(Pos.TOP_LEFT);
     }
@@ -147,6 +158,13 @@ public final class MainLobbyView {
         lanPane.setAlignment(Pos.TOP_CENTER);
         lanPane.setPadding(new Insets(20, 24, 24, 24));
         showLanChoicePane();
+    }
+
+    private void setupLeaderboardPane() {
+        leaderboardPane.setAlignment(Pos.TOP_CENTER);
+        leaderboardPane.setPadding(new Insets(20, 24, 24, 24));
+        leaderboardPane.setVisible(false);
+        leaderboardPane.setManaged(false);
     }
 
     private Button createModeButton(String modeLabel) {
@@ -200,6 +218,8 @@ public final class MainLobbyView {
         modePane.setManaged(false);
         lanPane.setVisible(false);
         lanPane.setManaged(false);
+        leaderboardPane.setVisible(false);
+        leaderboardPane.setManaged(false);
         gamesPane.setVisible(true);
         gamesPane.setManaged(true);
     }
@@ -305,6 +325,8 @@ public final class MainLobbyView {
         gamesPane.setManaged(false);
         lanPane.setVisible(false);
         lanPane.setManaged(false);
+        leaderboardPane.setVisible(false);
+        leaderboardPane.setManaged(false);
         modePane.setVisible(true);
         modePane.setManaged(true);
     }
@@ -314,8 +336,59 @@ public final class MainLobbyView {
         gamesPane.setManaged(false);
         modePane.setVisible(false);
         modePane.setManaged(false);
+        leaderboardPane.setVisible(false);
+        leaderboardPane.setManaged(false);
         lanPane.setVisible(true);
         lanPane.setManaged(true);
+    }
+
+    private void showLeaderboardPane() {
+        Label title = new Label("Leaderboard");
+        title.setStyle("-fx-font-size: 24px; -fx-text-fill: #1f2933; -fx-font-weight: 800;");
+
+        VBox scoreRows = new VBox(8);
+        List<String> topScores = systemController.getTopScores();
+        if (topScores.isEmpty()) {
+            Label empty = new Label("No scores yet. Play a game to set the first record.");
+            empty.setStyle("-fx-font-size: 14px; -fx-text-fill: #64748B; -fx-font-weight: 600;");
+            scoreRows.getChildren().add(empty);
+        } else {
+            for (int index = 0; index < topScores.size(); index++) {
+                scoreRows.getChildren().add(createLeaderboardRow(topScores.get(index), index));
+            }
+        }
+
+        Button backButton = createSecondaryButton("Back");
+        backButton.setOnAction(event -> showGamesPane());
+
+        VBox card = new VBox(12, title, scoreRows, backButton);
+        card.setPadding(new Insets(24));
+        card.setMaxWidth(520);
+        card.setAlignment(Pos.TOP_LEFT);
+        card.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 16;");
+        card.setEffect(new DropShadow(16, Color.rgb(16, 24, 40, 0.10)));
+
+        leaderboardPane.getChildren().setAll(card);
+        gamesPane.setVisible(false);
+        gamesPane.setManaged(false);
+        modePane.setVisible(false);
+        modePane.setManaged(false);
+        lanPane.setVisible(false);
+        lanPane.setManaged(false);
+        leaderboardPane.setVisible(true);
+        leaderboardPane.setManaged(true);
+    }
+
+    private HBox createLeaderboardRow(String value, int index) {
+        Label rowLabel = new Label(value);
+        rowLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #334155; -fx-font-weight: 600;");
+
+        HBox row = new HBox(rowLabel);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(10, 12, 10, 12));
+        String rowColor = index % 2 == 0 ? "#F8FAFC" : "#EEF2F7";
+        row.setStyle("-fx-background-color: " + rowColor + "; -fx-background-radius: 10;");
+        return row;
     }
 
     private String resolveLocalIp() {

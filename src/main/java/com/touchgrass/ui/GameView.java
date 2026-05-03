@@ -125,6 +125,7 @@ public final class GameView {
                 }
                 lastFrameTime = now;
                 if (shouldTickLogic(now)) {
+                    pumpLocalCoOpPongInputs();
                     activeSession.tick();
                     lastLogicTickTime = now;
                 }
@@ -167,6 +168,12 @@ public final class GameView {
             returnToLobby();
             return;
         }
+        if (isLocalCoOpPong()) {
+            if (isLocalCoOpPongKey(keyCode)) {
+                pressedKeys.add(keyCode);
+            }
+            return;
+        }
         InputCommand command = toInputCommand(keyCode);
         if (command == null) {
             return;
@@ -181,6 +188,10 @@ public final class GameView {
 
     private void handleKeyReleased(KeyEvent event) {
         KeyCode keyCode = event.getCode();
+        if (isLocalCoOpPong()) {
+            pressedKeys.remove(keyCode);
+            return;
+        }
         InputCommand command = toInputCommand(keyCode);
         if (command == null) {
             return;
@@ -328,6 +339,37 @@ public final class GameView {
 
     private boolean isPongGame() {
         return "pong".equalsIgnoreCase(gameId);
+    }
+
+    private boolean isLocalCoOpPong() {
+        return isPongGame()
+                && activeSession instanceof LocalSession
+                && "LocalCoOp".equalsIgnoreCase(activeSession.getMode());
+    }
+
+    private boolean isLocalCoOpPongKey(KeyCode keyCode) {
+        return keyCode == KeyCode.W
+                || keyCode == KeyCode.S
+                || keyCode == KeyCode.UP
+                || keyCode == KeyCode.DOWN;
+    }
+
+    private void pumpLocalCoOpPongInputs() {
+        if (!(activeSession instanceof LocalSession localSession) || !isLocalCoOpPong()) {
+            return;
+        }
+
+        boolean p1Up = pressedKeys.contains(KeyCode.W);
+        boolean p1Down = pressedKeys.contains(KeyCode.S);
+        if (p1Up ^ p1Down) {
+            localSession.handleInputForPlayer(p1Up ? InputCommand.UP : InputCommand.DOWN, 1, true);
+        }
+
+        boolean p2Up = pressedKeys.contains(KeyCode.UP);
+        boolean p2Down = pressedKeys.contains(KeyCode.DOWN);
+        if (p2Up ^ p2Down) {
+            localSession.handleInputForPlayer(p2Up ? InputCommand.UP : InputCommand.DOWN, 2, true);
+        }
     }
 
     private void returnToLobby() {
