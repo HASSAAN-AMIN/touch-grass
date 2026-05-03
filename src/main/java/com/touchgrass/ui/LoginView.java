@@ -1,6 +1,7 @@
 package com.touchgrass.ui;
 
 import com.touchgrass.bl.SystemController;
+import com.touchgrass.bl.UiSettings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -43,26 +44,29 @@ public final class LoginView {
     }
 
     public Scene createScene() {
+        UiSettings uiSettings = systemController.getUiSettings();
+        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
+
         Label title = new Label("Touch Grass");
-        title.setStyle("-fx-font-size: 36px; -fx-text-fill: #111827; -fx-font-weight: 800;");
+        title.setStyle("-fx-font-size: 36px; -fx-text-fill: " + (lightTheme ? "#111827" : "#E2E8F0") + "; -fx-font-weight: 800;");
 
         Label subtitle = new Label("Desktop Gaming Hub");
-        subtitle.setStyle("-fx-font-size: 14px; -fx-text-fill: #64748B;");
+        subtitle.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#94A3B8") + ";");
 
         usernameField.setPromptText("Username");
         usernameField.setMaxWidth(320);
-        usernameField.setStyle(inputStyle());
+        usernameField.setStyle(inputStyle(uiSettings));
 
         passwordField.setPromptText("Password");
         passwordField.setMaxWidth(320);
-        passwordField.setStyle(inputStyle());
+        passwordField.setStyle(inputStyle(uiSettings));
 
         Button loginButton = new Button("Login");
-        loginButton.setStyle(primaryButtonStyle());
+        loginButton.setStyle(primaryButtonStyle(uiSettings));
         loginButton.setOnAction(event -> attemptLogin());
 
         Button registerButton = new Button("Register");
-        registerButton.setStyle(secondaryButtonStyle());
+        registerButton.setStyle(secondaryButtonStyle(uiSettings));
         registerButton.setOnAction(event -> showRegisterPane());
 
         feedbackLabel.setStyle("-fx-text-fill: #B42318; -fx-font-size: 12px; -fx-font-weight: 600;");
@@ -71,28 +75,28 @@ public final class LoginView {
         buttonRow.setAlignment(Pos.CENTER);
 
         Button backToLoginButton = new Button("Back to Login");
-        backToLoginButton.setStyle(secondaryButtonStyle());
+        backToLoginButton.setStyle(secondaryButtonStyle(uiSettings));
         backToLoginButton.setOnAction(event -> showLoginPane());
 
         Button createAccountButton = new Button("Create Account");
-        createAccountButton.setStyle(primaryButtonStyle());
+        createAccountButton.setStyle(primaryButtonStyle(uiSettings));
         createAccountButton.setOnAction(event -> attemptRegistration());
 
         registerUsernameField.setPromptText("Username");
         registerUsernameField.setMaxWidth(320);
-        registerUsernameField.setStyle(inputStyle());
+        registerUsernameField.setStyle(inputStyle(uiSettings));
 
         registerEmailField.setPromptText("Email");
         registerEmailField.setMaxWidth(320);
-        registerEmailField.setStyle(inputStyle());
+        registerEmailField.setStyle(inputStyle(uiSettings));
 
         registerPasswordField.setPromptText("Password");
         registerPasswordField.setMaxWidth(320);
-        registerPasswordField.setStyle(inputStyle());
+        registerPasswordField.setStyle(inputStyle(uiSettings));
 
         registerConfirmPasswordField.setPromptText("Confirm Password");
         registerConfirmPasswordField.setMaxWidth(320);
-        registerConfirmPasswordField.setStyle(inputStyle());
+        registerConfirmPasswordField.setStyle(inputStyle(uiSettings));
 
         registerFeedbackLabel.setStyle("-fx-text-fill: #B42318; -fx-font-size: 12px; -fx-font-weight: 600;");
 
@@ -120,13 +124,13 @@ public final class LoginView {
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(28));
         card.setMaxWidth(450);
-        card.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 16;");
+        card.setStyle("-fx-background-color: " + (lightTheme ? "#FFFFFF" : "#111A2A") + "; -fx-background-radius: 16;");
         card.setEffect(new javafx.scene.effect.DropShadow(16, javafx.scene.paint.Color.rgb(16, 24, 40, 0.12)));
 
         VBox root = new VBox(card);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(24));
-        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #F8F9FA, #EEF5FF, #F4F0FF);");
+        root.setStyle("-fx-background-color: " + backgroundGradient(uiSettings) + ";");
 
         systemController.setStatusMessageListener(message -> {
             if (registerPane.isVisible()) {
@@ -189,17 +193,23 @@ public final class LoginView {
         registerPane.setManaged(false);
     }
 
-    private String inputStyle() {
-        return "-fx-background-color: #F8FAFC;"
-                + "-fx-text-fill: #1F2937;"
-                + "-fx-prompt-text-fill: #94A3B8;"
+    private String inputStyle(UiSettings uiSettings) {
+        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
+        return "-fx-background-color: " + (lightTheme ? "#F8FAFC" : "#1A2639") + ";"
+                + "-fx-text-fill: " + (lightTheme ? "#1F2937" : "#E2E8F0") + ";"
+                + "-fx-prompt-text-fill: " + (lightTheme ? "#94A3B8" : "#7B8DA8") + ";"
                 + "-fx-font-size: 14px;"
                 + "-fx-background-radius: 10;"
                 + "-fx-padding: 10 12 10 12;";
     }
 
-    private String primaryButtonStyle() {
-        return "-fx-background-color: linear-gradient(to right, #BDE7C5, #C6D7FF);"
+    private String primaryButtonStyle(UiSettings uiSettings) {
+        String accentRight = switch (uiSettings.getAccentStyle()) {
+            case LAVENDER -> "#CBB7FF";
+            case CORAL -> "#FFC2B3";
+            default -> "#C6D7FF";
+        };
+        return "-fx-background-color: linear-gradient(to right, #BDE7C5, " + accentRight + ");"
                 + "-fx-text-fill: #1F2937;"
                 + "-fx-font-size: 14px;"
                 + "-fx-font-weight: 700;"
@@ -207,12 +217,24 @@ public final class LoginView {
                 + "-fx-padding: 10 24 10 24;";
     }
 
-    private String secondaryButtonStyle() {
-        return "-fx-background-color: #E6ECF3;"
-                + "-fx-text-fill: #334155;"
+    private String secondaryButtonStyle(UiSettings uiSettings) {
+        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
+        return "-fx-background-color: " + (lightTheme ? "#E6ECF3" : "#22324A") + ";"
+                + "-fx-text-fill: " + (lightTheme ? "#334155" : "#D0D9E8") + ";"
                 + "-fx-font-size: 14px;"
                 + "-fx-font-weight: 600;"
                 + "-fx-background-radius: 10;"
                 + "-fx-padding: 10 24 10 24;";
+    }
+
+    private String backgroundGradient(UiSettings uiSettings) {
+        if (uiSettings.getThemeMode() == UiSettings.ThemeMode.DUSK) {
+            return "linear-gradient(to bottom right, #0F172A, #111A2A, #1A2240)";
+        }
+        return switch (uiSettings.getAccentStyle()) {
+            case LAVENDER -> "linear-gradient(to bottom right, #F8F9FA, #F3EEFF, #EEEFFF)";
+            case CORAL -> "linear-gradient(to bottom right, #F8F9FA, #FFF2ED, #FFE9E1)";
+            default -> "linear-gradient(to bottom right, #F8F9FA, #EEF5FF, #F4F0FF)";
+        };
     }
 }

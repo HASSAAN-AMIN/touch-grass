@@ -3,6 +3,7 @@ package com.touchgrass.ui;
 import com.touchgrass.bl.LocalSession;
 import com.touchgrass.bl.Session;
 import com.touchgrass.bl.SystemController;
+import com.touchgrass.bl.UiSettings;
 import com.touchgrass.bl.games.GameState;
 import com.touchgrass.bl.games.InputCommand;
 import com.touchgrass.bl.games.PongLogic;
@@ -54,6 +55,7 @@ public final class GameView {
     private double fps;
     private boolean gameOverOverlayShown;
     private boolean gameOverActionTriggered;
+    private boolean paused;
     private String inlineStatusMessage;
 
     public GameView(Stage stage, SystemController systemController, String gameId, Session activeSession) {
@@ -68,15 +70,18 @@ public final class GameView {
         this.gameOverOverlay = new VBox(12);
         this.gameOverScoreLabel = new Label();
         this.inlineStatusMessage = "";
+        this.paused = false;
     }
 
     public Parent createRoot() {
+        UiSettings uiSettings = systemController.getUiSettings();
+        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
         Label sessionLabel = new Label("Session: " + activeSession.getMode());
-        sessionLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #667085; -fx-font-weight: 600;");
+        sessionLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#667085" : "#A3B4D1") + "; -fx-font-weight: 600;");
 
         Button quitButton = new Button("Quit");
         quitButton.setStyle(
-                "-fx-background-color: #dce3db; -fx-text-fill: #1f2933; -fx-font-size: 13px;"
+                "-fx-background-color: " + (lightTheme ? "#dce3db" : "#243349") + "; -fx-text-fill: " + (lightTheme ? "#1f2933" : "#D0D9E8") + "; -fx-font-size: 13px;"
                         + "-fx-font-weight: 700; -fx-background-radius: 12; -fx-padding: 9 18 9 18;");
         quitButton.setOnAction(event -> returnToLobby());
 
@@ -96,7 +101,7 @@ public final class GameView {
 
         root.setTop(topBar);
         root.setCenter(playArea);
-        root.setStyle("-fx-background-color: #F8F9FA;");
+        root.setStyle("-fx-background-color: " + (lightTheme ? "#F8F9FA" : "#0F172A") + ";");
         root.setFocusTraversable(true);
         return root;
     }
@@ -131,7 +136,9 @@ public final class GameView {
                 lastFrameTime = now;
                 if (shouldTickLogic(now)) {
                     pumpLocalCoOpPongInputs();
-                    activeSession.tick();
+                    if (!paused) {
+                        activeSession.tick();
+                    }
                     lastLogicTickTime = now;
                 }
                 if (!gameOverOverlayShown && activeSession.isGameOver() && !isTicTacToeGame()) {
@@ -151,24 +158,35 @@ public final class GameView {
     }
 
     private void renderFrame(GraphicsContext graphics) {
-        graphics.setFill(Color.web("#F8F9FA"));
+        UiSettings uiSettings = systemController.getUiSettings();
+        graphics.setFill(uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT
+                ? Color.web("#F8F9FA")
+                : Color.web("#0F172A"));
         graphics.fillRect(0, 0, WIDTH, HEIGHT);
+        drawAmbientEffects(graphics, uiSettings);
 
         drawPongIfActive(graphics);
         drawSnakeIfActive(graphics);
         drawTicTacToeIfActive(graphics);
 
-        graphics.setFill(Color.web("#4B5563"));
+        graphics.setFill(uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT ? Color.web("#4B5563") : Color.web("#D0D9E8"));
         graphics.setFont(Font.font("Consolas", 24));
-        graphics.fillText("Game Running: " + Math.round(fps) + " FPS", 32, 44);
+        if (uiSettings.isShowFps()) {
+            graphics.fillText("Game Running: " + Math.round(fps) + " FPS", 32, 44);
+        }
 
-        graphics.setFill(Color.web("#6B7280"));
+        graphics.setFill(uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT ? Color.web("#6B7280") : Color.web("#9EB1CD"));
         graphics.setFont(Font.font("Consolas", 16));
-        graphics.fillText("Session: " + activeSession.getMode(), 32, 72);
-        graphics.fillText("Use WASD + Arrows, press ESC to quit", 32, 96);
+        graphics.fillText("Session: " + activeSession.getMode(), 32, 76);
+        graphics.fillText("Use WASD + Arrows, press P to pause, ESC to quit", 32, 100);
+        if (paused) {
+            graphics.setFill(Color.web("#E55934"));
+            graphics.setFont(Font.font("Consolas", 20));
+            graphics.fillText("Paused", 32, 128);
+        }
         if (!inlineStatusMessage.isBlank()) {
             graphics.setFill(Color.web("#B42318"));
-            graphics.fillText(inlineStatusMessage, 32, 120);
+            graphics.fillText(inlineStatusMessage, 32, 152);
         }
     }
 
@@ -176,6 +194,10 @@ public final class GameView {
         KeyCode keyCode = event.getCode();
         if (keyCode == KeyCode.ESCAPE) {
             returnToLobby();
+            return;
+        }
+        if (keyCode == KeyCode.P) {
+            paused = !paused;
             return;
         }
         if (isLocalCoOpPong()) {
@@ -515,6 +537,24 @@ public final class GameView {
         gameOverOverlay.setStyle("-fx-background-color: rgba(248, 249, 250, 0.78);");
         gameOverOverlay.setVisible(false);
         gameOverOverlay.setManaged(false);
+    }
+
+    private void drawAmbientEffects(GraphicsContext graphics, UiSettings uiSettings) {
+        if (!uiSettings.isAmbientMotion()) {
+            return;
+        }
+        long time = System.nanoTime() / 6_000_000L;
+        double waveX = (time % 220) * 4.4;
+        double waveY = (time % 170) * 3.2;
+        Color glow = switch (uiSettings.getAccentStyle()) {
+            case LAVENDER -> Color.web("#CBB7FF", 0.12);
+            case CORAL -> Color.web("#FFC2B3", 0.12);
+            default -> Color.web("#BDE7C5", 0.12);
+        };
+        graphics.setFill(glow);
+        graphics.fillOval(waveX - 110, 36, 220, 220);
+        graphics.fillOval(WIDTH - waveX - 120, HEIGHT - 250, 240, 240);
+        graphics.fillOval((waveY * 1.6) % WIDTH, HEIGHT * 0.32, 180, 180);
     }
 
     private void showGameOverOverlay() {

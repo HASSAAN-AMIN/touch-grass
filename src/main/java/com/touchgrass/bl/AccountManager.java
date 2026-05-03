@@ -22,6 +22,10 @@ public class AccountManager {
             "SELECT 1 FROM Account WHERE username = ? AND passwordHash = ? LIMIT 1";
     private static final String EXISTENCE_QUERY =
             "SELECT 1 FROM Account WHERE username = ? OR email = ? LIMIT 1";
+    private static final String ACCOUNT_ID_BY_USERNAME_QUERY =
+            "SELECT accountId FROM Account WHERE username = ? LIMIT 1";
+    private static final String PROFILE_EXISTS_BY_ACCOUNT_QUERY =
+            "SELECT 1 FROM PlayerProfile WHERE accountId = ? LIMIT 1";
     private static final String INSERT_ACCOUNT_QUERY =
             "INSERT INTO Account (accountId, username, passwordHash, email, createdAt) VALUES (?, ?, ?, ?, ?)";
     private static final String INSERT_PROFILE_QUERY =
@@ -36,6 +40,13 @@ public class AccountManager {
         }
 
         if (DEFAULT_ADMIN_USERNAME.equals(username) && DEFAULT_ADMIN_PASSWORD.equals(password)) {
+            try {
+                Connection connection = DatabaseConnection.getInstance().getConnection();
+                ensureAccountAndProfile(connection, DEFAULT_ADMIN_USERNAME, "admin@touchgrass.local", hashPassword(DEFAULT_ADMIN_PASSWORD));
+            } catch (SQLException | IllegalStateException e) {
+                // Admin fallback remains available even if DB bootstrap fails.
+                System.err.println("Database Error: " + e.getMessage());
+            }
             return true;
         }
 
@@ -127,6 +138,54 @@ public class AccountManager {
         try (PreparedStatement stmt = connection.prepareStatement(EXISTENCE_QUERY)) {
             stmt.setString(1, username);
             stmt.setString(2, email);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private void ensureAccountAndProfile(Connection connection, String username, String email, String passwordHash) throws SQLException {
+        String accountId = findAccountId(connection, username);
+        if (accountId == null) {
+            accountId = UUID.randomUUID().toString();
+            try (PreparedStatement accountStmt = connection.prepareStatement(INSERT_ACCOUNT_QUERY)) {
+                accountStmt.setString(1, accountId);
+                accountStmt.setString(2, username);
+                accountStmt.setString(3, passwordHash);
+                accountStmt.setString(4, email);
+                accountStmt.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
+                accountStmt.executeUpdate();
+            }
+        }
+
+        if (profileExists(connection, accountId)) {
+            return;
+        }
+        try (PreparedStatement profileStmt = connection.prepareStatement(INSERT_PROFILE_QUERY)) {
+            profileStmt.setString(1, UUID.randomUUID().toString());
+            profileStmt.setString(2, accountId);
+            profileStmt.setString(3, null);
+            profileStmt.setInt(4, 0);
+            profileStmt.setBoolean(5, false);
+            profileStmt.executeUpdate();
+        }
+    }
+
+    private String findAccountId(Connection connection, String username) throws SQLException {
+        try (PreparedStatement stmt = connection.prepareStatement(ACCOUNT_ID_BY_USERNAME_QUERY)) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("accountId");
+                }
+                return null;
+            }
+        }
+    }
+
+    private boolean profileExists(Connection connection, String accountId) throws SQLException {
+        try (PreparedStatement stmt = connection.prepareStatement(PROFILE_EXISTS_BY_ACCOUNT_QUERY)) {
+            stmt.setString(1, accountId);
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next();
             }

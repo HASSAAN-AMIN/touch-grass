@@ -16,6 +16,7 @@ public final class SystemController {
     private final AccountManager accountManager;
     private final GameFactory gameFactory;
     private final LeaderboardManager leaderboardManager;
+    private final UiSettings uiSettings;
     private String currentUsername;
     private Session activeSession;
     private Consumer<String> statusMessageListener;
@@ -25,6 +26,7 @@ public final class SystemController {
         this.accountManager = new AccountManager();
         this.gameFactory = new GameFactory();
         this.leaderboardManager = new LeaderboardManager();
+        this.uiSettings = new UiSettings();
     }
 
     public boolean handleLogin(String username, String password) {
@@ -88,16 +90,21 @@ public final class SystemController {
     }
 
     public void handleGameOver(String gameId, int finalScore, boolean saveScore) {
+        String postTransitionMessage = null;
         if (saveScore && currentUsername != null && !currentUsername.isBlank()) {
             try {
                 boolean inserted = leaderboardManager.insertScore(currentUsername, gameId, finalScore);
                 if (!inserted) {
-                    notifyStatus("Unable to save score right now.");
+                    postTransitionMessage = "Unable to save score right now.";
+                } else {
+                    postTransitionMessage = "Score saved.";
                 }
             } catch (RuntimeException e) {
-                notifyStatus("Unable to save score right now.");
+                postTransitionMessage = "Unable to save score right now.";
                 System.err.println("Database Error: " + e.getMessage());
             }
+        } else if (saveScore) {
+            postTransitionMessage = "Please log in before saving scores.";
         }
 
         MainLobbyView mainLobbyView = new MainLobbyView(stage, this);
@@ -105,10 +112,16 @@ public final class SystemController {
         if (scene == null) {
             stage.setScene(mainLobbyView.createScene());
             activeSession = null;
+            if (postTransitionMessage != null) {
+                notifyStatus(postTransitionMessage);
+            }
             return;
         }
         scene.setRoot(mainLobbyView.createRoot());
         activeSession = null;
+        if (postTransitionMessage != null) {
+            notifyStatus(postTransitionMessage);
+        }
     }
 
     public List<String> getTopScores() {
@@ -117,6 +130,10 @@ public final class SystemController {
 
     public void setStatusMessageListener(Consumer<String> statusMessageListener) {
         this.statusMessageListener = statusMessageListener;
+    }
+
+    public UiSettings getUiSettings() {
+        return uiSettings;
     }
 
     public void handleLogout() {
