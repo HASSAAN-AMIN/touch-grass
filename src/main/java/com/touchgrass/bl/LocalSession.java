@@ -55,6 +55,9 @@ public final class LocalSession extends Session {
             return;
         }
         if (pongLogic != null) {
+            if ("SinglePlayer".equalsIgnoreCase(getMode())) {
+                driveSinglePlayerOpponent();
+            }
             pongLogic.update();
         }
     }
@@ -107,5 +110,14 @@ public final class LocalSession extends Session {
         if ("tic-tac-toe".equalsIgnoreCase(gameId)) {
             ticTacToeLogic = new TicTacToeLogic();
         }
+    }
+
+    private void driveSinglePlayerOpponent() {
+        double ballCenter = pongLogic.getBallCenterY();
+        double paddle2Center = pongLogic.getPaddleCenterY(2);
+        if (Math.abs(ballCenter - paddle2Center) < 8) {
+            return;
+        }
+        pongLogic.processCommand(ballCenter < paddle2Center ? InputCommand.UP : InputCommand.DOWN, 2);
     }
 }

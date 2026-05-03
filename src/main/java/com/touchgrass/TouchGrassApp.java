@@ -11,9 +11,12 @@ public final class TouchGrassApp extends Application {
         SystemController systemController = new SystemController(primaryStage);
         LoginView loginView = new LoginView(primaryStage, systemController);
 
-        primaryStage.setTitle("Touch Grass");
+        primaryStage.setTitle("Touch Grass - Desktop Gaming Lounge");
         primaryStage.setScene(loginView.createScene());
-        primaryStage.setResizable(false);
+        primaryStage.setMinWidth(960);
+        primaryStage.setMinHeight(600);
+        primaryStage.setResizable(true);
+        primaryStage.centerOnScreen();
         primaryStage.show();
     }
 

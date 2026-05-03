@@ -10,6 +10,7 @@ public final class PongLogic {
     private static final double PADDLE_SPEED = 16;
     private static final double BALL_START_SPEED_X = 5;
     private static final double BALL_START_SPEED_Y = 3;
+    private static final double MAX_BALL_SPEED = 12;
     private static final double LEFT_PADDLE_X = 24;
     private static final double RIGHT_PADDLE_X = FIELD_WIDTH - 24 - PADDLE_WIDTH;
 
@@ -46,11 +47,13 @@ public final class PongLogic {
                 && ballY <= paddle2Y + PADDLE_HEIGHT;
 
         if (leftCollision && ballVelocityX < 0) {
-            ballVelocityX = -ballVelocityX;
+            ballVelocityX = boostedVelocity(-ballVelocityX);
             ballX = LEFT_PADDLE_X + PADDLE_WIDTH;
+            ballVelocityY = adjustedBounceVelocity(paddle1Y);
         } else if (rightCollision && ballVelocityX > 0) {
-            ballVelocityX = -ballVelocityX;
+            ballVelocityX = -boostedVelocity(ballVelocityX);
             ballX = RIGHT_PADDLE_X - BALL_SIZE;
+            ballVelocityY = adjustedBounceVelocity(paddle2Y);
         }
 
         if (ballX < -BALL_SIZE) {
@@ -78,6 +81,20 @@ public final class PongLogic {
         return new GameState(ballX, ballY, paddle1Y, paddle2Y, scorePlayer1, scorePlayer2);
     }
 
+    public synchronized double getBallCenterY() {
+        return ballY + (BALL_SIZE / 2.0);
+    }
+
+    public synchronized double getPaddleCenterY(int playerNumber) {
+        if (playerNumber == 1) {
+            return paddle1Y + (PADDLE_HEIGHT / 2.0);
+        }
+        if (playerNumber == 2) {
+            return paddle2Y + (PADDLE_HEIGHT / 2.0);
+        }
+        return 0;
+    }
+
     private void reset() {
         paddle1Y = (FIELD_HEIGHT - PADDLE_HEIGHT) / 2.0;
         paddle2Y = (FIELD_HEIGHT - PADDLE_HEIGHT) / 2.0;
@@ -95,5 +112,17 @@ public final class PongLogic {
 
     private double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private double boostedVelocity(double currentVelocity) {
+        double boosted = currentVelocity * 1.04;
+        return clamp(boosted, -MAX_BALL_SPEED, MAX_BALL_SPEED);
+    }
+
+    private double adjustedBounceVelocity(double paddleY) {
+        double paddleCenter = paddleY + (PADDLE_HEIGHT / 2.0);
+        double ballCenter = ballY + (BALL_SIZE / 2.0);
+        double offset = (ballCenter - paddleCenter) / (PADDLE_HEIGHT / 2.0);
+        return clamp(offset * 5.2, -MAX_BALL_SPEED, MAX_BALL_SPEED);
     }
 }

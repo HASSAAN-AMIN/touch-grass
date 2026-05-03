@@ -8,10 +8,10 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -29,9 +29,9 @@ public final class MainLobbyView {
     private static final String[] DAILY_TIPS = {
             "Tip: Press ESC in-game for a quick exit.",
             "Tip: Snake scores +10 per food.",
-            "Tip: LAN host is authoritative in Pong.",
-            "Tip: Save scores to climb the leaderboard.",
-            "Tip: Try Local Co-Op Pong with a friend."
+            "Tip: LAN host controls authoritative Pong state.",
+            "Tip: Save scores to keep your leaderboard streak alive.",
+            "Tip: Toggle themes in settings for a different vibe."
     };
 
     private final Stage stage;
@@ -53,7 +53,7 @@ public final class MainLobbyView {
         this.stage = stage;
         this.systemController = systemController;
         this.centerStack = new StackPane();
-        this.gamesPane = new VBox(16);
+        this.gamesPane = new VBox(18);
         this.modePane = new VBox(14);
         this.lanPane = new VBox(14);
         this.leaderboardPane = new VBox(14);
@@ -78,15 +78,18 @@ public final class MainLobbyView {
         });
 
         Label title = new Label("Touch Grass");
-        title.setStyle("-fx-font-size: 30px; -fx-text-fill: " + (lightTheme ? "#111827" : "#E2E8F0") + "; -fx-font-weight: 800;");
-
-        Label subtitle = new Label("Games Library");
-        subtitle.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#8EA0BF") + ";");
-        globalStatusLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #E11D48; -fx-font-weight: 700;");
+        title.setStyle("-fx-font-size: 30px; -fx-font-weight: 900; -fx-text-fill: " + (lightTheme ? "#0F172A" : "#E2E8F0") + ";");
+        Label subtitle = new Label("Modern Desktop Gaming Lounge");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + ";");
         Label tipLabel = new Label(pickTip());
-        tipLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: " + (lightTheme ? "#667085" : "#A3B4D1") + "; -fx-font-style: italic;");
+        tipLabel.setStyle("-fx-font-size: 12px; -fx-font-style: italic; -fx-text-fill: " + (lightTheme ? "#667085" : "#8EA0BF") + ";");
+        globalStatusLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #C81E5B;");
 
         VBox titleBox = new VBox(4, title, subtitle, tipLabel, globalStatusLabel);
+
+        Button leaderboardButton = new Button("Leaderboard");
+        leaderboardButton.setStyle(secondaryButtonStyle(uiSettings));
+        leaderboardButton.setOnAction(event -> showLeaderboardPane());
 
         Button settingsButton = new Button("Settings");
         settingsButton.setStyle(secondaryButtonStyle(uiSettings));
@@ -98,17 +101,14 @@ public final class MainLobbyView {
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox topBar = new HBox(12, titleBox, spacer, settingsButton, logoutButton);
+        HBox topBar = new HBox(10, titleBox, spacer, leaderboardButton, settingsButton, logoutButton);
         topBar.setAlignment(Pos.CENTER_LEFT);
-        topBar.setPadding(new Insets(24, 24, 16, 24));
+        topBar.setPadding(new Insets(24, 24, 14, 24));
 
-        Label sectionLabel = new Label("Browse Games");
-        sectionLabel.setStyle("-fx-font-size: 18px; -fx-text-fill: " + (lightTheme ? "#334155" : "#CAD5E4") + "; -fx-font-weight: 700;");
-
-        setupGamesPane(sectionLabel, uiSettings);
+        setupGamesPane(uiSettings);
         setupModePane(uiSettings);
         setupLanPane(uiSettings);
-        setupLeaderboardPane();
+        setupLeaderboardPane(uiSettings);
         setupSettingsPane(uiSettings);
 
         centerStack.getChildren().setAll(gamesPane, modePane, lanPane, leaderboardPane, settingsPane);
@@ -121,45 +121,89 @@ public final class MainLobbyView {
         return root;
     }
 
-    private void setupGamesPane(Label sectionLabel, UiSettings uiSettings) {
-        FlowPane grid = new FlowPane();
-        grid.setHgap(18);
-        grid.setVgap(18);
-        grid.getChildren().addAll(
-                createGameCard("Snake", "snake", uiSettings),
-                createGameCard("Pong", "pong", uiSettings),
-                createGameCard("Tic-Tac-Toe", "tic-tac-toe", uiSettings));
+    private void setupGamesPane(UiSettings uiSettings) {
+        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
+        Label sectionTitle = new Label("Choose Your Game");
+        sectionTitle.setStyle("-fx-font-size: 20px; -fx-font-weight: 800; -fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + ";");
+        Label sectionSub = new Label("One game per row. Scroll and launch with style.");
+        sectionSub.setStyle("-fx-font-size: 13px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + ";");
 
-        Button leaderboardButton = new Button("View Leaderboard");
-        leaderboardButton.setStyle(primaryButtonStyle(uiSettings));
-        leaderboardButton.setOnAction(event -> showLeaderboardPane());
+        VBox gameRows = new VBox(14,
+                createGameRow("Snake", "snake", "Single player precision arcade", uiSettings),
+                createGameRow("Pong", "pong", "Local or LAN competitive rally", uiSettings),
+                createGameRow("Tic-Tac-Toe", "tic-tac-toe", "Classic strategy with modern visuals", uiSettings));
 
-        gamesPane.getChildren().setAll(sectionLabel, grid, leaderboardButton);
-        gamesPane.setPadding(new Insets(0, 24, 24, 24));
-        gamesPane.setAlignment(Pos.TOP_LEFT);
+        ScrollPane scrollPane = new ScrollPane(gameRows);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPannable(true);
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+
+        VBox shellCard = new VBox(14, sectionTitle, sectionSub, scrollPane);
+        shellCard.setPadding(new Insets(20));
+        shellCard.setMaxWidth(860);
+        shellCard.setPrefHeight(430);
+        shellCard.setStyle("-fx-background-color: " + panelColor(uiSettings) + "; -fx-background-radius: 24;");
+        shellCard.setEffect(new DropShadow(26, Color.rgb(15, 23, 42, 0.14)));
+
+        gamesPane.getChildren().setAll(shellCard);
+        gamesPane.setAlignment(Pos.TOP_CENTER);
+        gamesPane.setPadding(new Insets(6, 24, 24, 24));
+    }
+
+    private HBox createGameRow(String title, String gameId, String description, UiSettings uiSettings) {
+        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
+
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: " + (lightTheme ? "#0F172A" : "#E2E8F0") + ";");
+
+        Label descriptionLabel = new Label(description);
+        descriptionLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + ";");
+
+        Label tag = new Label(gameId.equals("pong") ? "MULTIPLAYER READY" : "ARCADE");
+        tag.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: " + (lightTheme ? "#334155" : "#D8E2F0") + ";"
+                + "-fx-background-color: " + (lightTheme ? "#DFE9FB" : "#2B3D5A") + "; -fx-background-radius: 12; -fx-padding: 4 10 4 10;");
+
+        VBox details = new VBox(8, titleLabel, descriptionLabel, tag);
+
+        Button openButton = new Button("Select Mode");
+        openButton.setStyle(primaryButtonStyle(uiSettings));
+        openButton.setOnAction(event -> showModePane(title, gameId));
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox row = new HBox(16, details, spacer, openButton);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(16, 18, 16, 18));
+        row.setStyle("-fx-background-color: " + rowTone(gameId, uiSettings, false)
+                + "; -fx-background-radius: 20; -fx-border-radius: 20;");
+        row.setEffect(new DropShadow(14, Color.rgb(15, 23, 42, 0.10)));
+        row.setOnMouseEntered(event -> row.setStyle("-fx-background-color: " + rowTone(gameId, uiSettings, true)
+                + "; -fx-background-radius: 20; -fx-border-radius: 20;"));
+        row.setOnMouseExited(event -> row.setStyle("-fx-background-color: " + rowTone(gameId, uiSettings, false)
+                + "; -fx-background-radius: 20; -fx-border-radius: 20;"));
+        return row;
     }
 
     private void setupModePane(UiSettings uiSettings) {
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        Label modeTitle = new Label("Mode Selection");
-        modeTitle.setStyle("-fx-font-size: 24px; -fx-text-fill: " + (lightTheme ? "#1f2933" : "#E2E8F0") + "; -fx-font-weight: 800;");
 
-        selectedGameLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#667085" : "#8EA0BF") + "; -fx-font-weight: 600;");
+        Label modeTitle = new Label("Pick Play Mode");
+        modeTitle.setStyle("-fx-font-size: 26px; -fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + "; -fx-font-weight: 800;");
+        selectedGameLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + "; -fx-font-weight: 700;");
 
-        Button singlePlayer = createModeButton("Single Player", uiSettings);
-        Button localCoOp = createModeButton("Local Co-Op", uiSettings);
-        Button lan = createModeButton("LAN Multiplayer", uiSettings);
-        lan.setOnAction(event -> showLanChoicePane());
-
-        Button backButton = new Button("Back");
+        Button singlePlayer = createActionButton("Single Player", uiSettings, event -> systemController.launchGame(selectedGameId, "Single Player"));
+        Button localCoOp = createActionButton("Local Co-Op", uiSettings, event -> systemController.launchGame(selectedGameId, "Local Co-Op"));
+        Button lan = createActionButton("LAN Multiplayer", uiSettings, event -> showLanChoicePane());
+        Button backButton = createActionButton("Back", uiSettings, event -> showGamesPane());
         backButton.setStyle(secondaryButtonStyle(uiSettings));
-        backButton.setOnAction(event -> showGamesPane());
 
         VBox card = new VBox(12, modeTitle, selectedGameLabel, singlePlayer, localCoOp, lan, backButton);
         card.setPadding(new Insets(24));
-        card.setMaxWidth(360);
-        card.setStyle("-fx-background-color: " + panelColor(uiSettings) + "; -fx-background-radius: 16;");
-        card.setEffect(new DropShadow(16, Color.rgb(16, 24, 40, 0.10)));
+        card.setMaxWidth(420);
+        card.setStyle("-fx-background-color: " + panelColor(uiSettings) + "; -fx-background-radius: 22;");
+        card.setEffect(new DropShadow(24, Color.rgb(15, 23, 42, 0.14)));
 
         modePane.getChildren().setAll(card);
         modePane.setAlignment(Pos.TOP_CENTER);
@@ -168,22 +212,24 @@ public final class MainLobbyView {
 
     private void setupLanPane(UiSettings uiSettings) {
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        lanStatusLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#A2B4D3") + "; -fx-font-weight: 600;");
+        lanStatusLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + "; -fx-font-weight: 600;");
         lanIpField.setPromptText("Host IP Address");
-        lanIpField.setMaxWidth(260);
-        lanIpField.setStyle(
-                "-fx-background-color: " + panelColor(uiSettings) + "; -fx-text-fill: " + (lightTheme ? "#1F2937" : "#E2E8F0")
-                        + "; -fx-prompt-text-fill: " + (lightTheme ? "#9CA3AF" : "#90A3C0") + ";"
-                        + "-fx-font-size: 13px; -fx-background-radius: 10; -fx-padding: 9 12 9 12;");
-
+        lanIpField.setMaxWidth(280);
+        lanIpField.setStyle("-fx-background-color: " + (lightTheme ? "#EAF0FF" : "#1D2A42") + ";"
+                + "-fx-text-fill: " + (lightTheme ? "#1E293B" : "#D6E1F0") + ";"
+                + "-fx-prompt-text-fill: " + (lightTheme ? "#94A3B8" : "#89A1C3") + ";"
+                + "-fx-font-size: 13px; -fx-background-radius: 14; -fx-padding: 10 12 10 12;");
         lanPane.setAlignment(Pos.TOP_CENTER);
         lanPane.setPadding(new Insets(20, 24, 24, 24));
         showLanChoicePane();
     }
 
-    private void setupLeaderboardPane() {
+    private void setupLeaderboardPane(UiSettings uiSettings) {
         leaderboardPane.setAlignment(Pos.TOP_CENTER);
         leaderboardPane.setPadding(new Insets(20, 24, 24, 24));
+        leaderboardPane.setVisible(false);
+        leaderboardPane.setManaged(false);
+        showLeaderboardPane(uiSettings);
         leaderboardPane.setVisible(false);
         leaderboardPane.setManaged(false);
     }
@@ -191,32 +237,23 @@ public final class MainLobbyView {
     private void setupSettingsPane(UiSettings uiSettings) {
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
 
-        Label title = new Label("Settings");
-        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: " + (lightTheme ? "#1f2933" : "#E2E8F0") + ";");
+        Label title = new Label("Design Settings");
+        title.setStyle("-fx-font-size: 25px; -fx-font-weight: 800; -fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + ";");
+        Label subtitle = new Label("Personalize palette and in-game presentation");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + ";");
 
-        Label themeValue = new Label("Theme: " + uiSettings.getThemeMode().name());
-        themeValue.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#90A3C0") + "; -fx-font-weight: 700;");
+        Label themeValue = settingValue("Theme", uiSettings.getThemeMode().name(), lightTheme);
+        Label accentValue = settingValue("Accent", uiSettings.getAccentStyle().name(), lightTheme);
+        Label fpsValue = settingValue("FPS Counter", uiSettings.isShowFps() ? "On" : "Off", lightTheme);
+        Label ambientValue = settingValue("Ambient Motion", uiSettings.isAmbientMotion() ? "On" : "Off", lightTheme);
 
-        Label accentValue = new Label("Accent: " + uiSettings.getAccentStyle().name());
-        accentValue.setStyle(themeValue.getStyle());
-
-        Label fpsValue = new Label("Show FPS: " + (uiSettings.isShowFps() ? "ON" : "OFF"));
-        fpsValue.setStyle(themeValue.getStyle());
-
-        Label ambientValue = new Label("Ambient Motion: " + (uiSettings.isAmbientMotion() ? "ON" : "OFF"));
-        ambientValue.setStyle(themeValue.getStyle());
-
-        Button themeButton = createModeButton("Toggle Theme", uiSettings);
-        themeButton.setOnAction(event -> {
-            UiSettings.ThemeMode next = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT
+        Button toggleTheme = createActionButton("Toggle Theme", uiSettings, event -> {
+            uiSettings.setThemeMode(uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT
                     ? UiSettings.ThemeMode.DUSK
-                    : UiSettings.ThemeMode.LIGHT;
-            uiSettings.setThemeMode(next);
+                    : UiSettings.ThemeMode.LIGHT);
             reloadLobby();
         });
-
-        Button accentButton = createModeButton("Cycle Accent", uiSettings);
-        accentButton.setOnAction(event -> {
+        Button cycleAccent = createActionButton("Cycle Accent", uiSettings, event -> {
             UiSettings.AccentStyle next = switch (uiSettings.getAccentStyle()) {
                 case SAGE -> UiSettings.AccentStyle.LAVENDER;
                 case LAVENDER -> UiSettings.AccentStyle.CORAL;
@@ -225,153 +262,88 @@ public final class MainLobbyView {
             uiSettings.setAccentStyle(next);
             reloadLobby();
         });
-
-        Button fpsButton = createModeButton("Toggle FPS Counter", uiSettings);
-        fpsButton.setOnAction(event -> {
+        Button toggleFps = createActionButton("Toggle FPS", uiSettings, event -> {
             uiSettings.setShowFps(!uiSettings.isShowFps());
             reloadLobby();
         });
-
-        Button ambientButton = createModeButton("Toggle Ambient Motion", uiSettings);
-        ambientButton.setOnAction(event -> {
+        Button toggleAmbient = createActionButton("Toggle Ambient Motion", uiSettings, event -> {
             uiSettings.setAmbientMotion(!uiSettings.isAmbientMotion());
             reloadLobby();
         });
+        Button back = createActionButton("Back", uiSettings, event -> showGamesPane());
+        back.setStyle(secondaryButtonStyle(uiSettings));
 
-        Button backButton = new Button("Back");
-        backButton.setStyle(secondaryButtonStyle(uiSettings));
-        backButton.setOnAction(event -> showGamesPane());
-
-        VBox card = new VBox(12, title, themeValue, accentValue, fpsValue, ambientValue, themeButton, accentButton, fpsButton, ambientButton, backButton);
+        VBox card = new VBox(12, title, subtitle, themeValue, accentValue, fpsValue, ambientValue,
+                toggleTheme, cycleAccent, toggleFps, toggleAmbient, back);
         card.setPadding(new Insets(24));
-        card.setMaxWidth(440);
-        card.setStyle("-fx-background-color: " + panelColor(uiSettings) + "; -fx-background-radius: 16;");
-        card.setEffect(new DropShadow(16, Color.rgb(16, 24, 40, 0.10)));
+        card.setMaxWidth(460);
+        card.setStyle("-fx-background-color: " + panelColor(uiSettings) + "; -fx-background-radius: 22;");
+        card.setEffect(new DropShadow(24, Color.rgb(15, 23, 42, 0.14)));
 
         settingsPane.getChildren().setAll(card);
         settingsPane.setAlignment(Pos.TOP_CENTER);
         settingsPane.setPadding(new Insets(20, 24, 24, 24));
     }
 
-    private Button createModeButton(String modeLabel, UiSettings uiSettings) {
-        Button button = new Button(modeLabel);
-        button.setMaxWidth(Double.MAX_VALUE);
-        button.setStyle(primaryButtonStyle(uiSettings));
-        button.setOnAction(event -> systemController.launchGame(selectedGameId, modeLabel));
-        return button;
-    }
-
-    private Button createGameCard(String gameTitle, String gameId, UiSettings uiSettings) {
-        Button card = new Button(gameTitle);
-        card.setPrefSize(240, 170);
-        card.setStyle(cardStyle(gameTitle, uiSettings, false));
-        card.setEffect(new DropShadow(14, Color.rgb(16, 24, 40, 0.10)));
-        card.setOnAction(event -> showModePane(gameTitle, gameId));
-        card.setOnMouseEntered(event -> card.setStyle(cardStyle(gameTitle, uiSettings, true)));
-        card.setOnMouseExited(event -> card.setStyle(cardStyle(gameTitle, uiSettings, false)));
-        return card;
-    }
-
-    private String cardStyle(String gameTitle, UiSettings uiSettings, boolean hover) {
-        boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        String tone = switch (gameTitle) {
-            case "Snake" -> (lightTheme ? "#D8F2D2" : "#233723");
-            case "Pong" -> (lightTheme ? "#D9EBFF" : "#1E3049");
-            default -> (lightTheme ? "#F1E2FF" : "#312346");
-        };
-        String border = hover ? "-fx-border-color: #8EA0BF; -fx-border-width: 1;" : "";
-        return "-fx-background-color: linear-gradient(to bottom right, " + panelColor(uiSettings) + ", " + tone + ");"
-                + "-fx-text-fill: " + (lightTheme ? "#1f2933" : "#E2E8F0") + ";"
-                + "-fx-font-size: 22px;"
-                + "-fx-font-weight: 700;"
-                + "-fx-background-radius: 16;"
-                + "-fx-border-radius: 16;"
-                + border
-                + "-fx-padding: 12 12 12 12;";
-    }
-
     private void showModePane(String gameTitle, String gameId) {
         selectedGameId = gameId;
         selectedGameTitle = gameTitle;
-        selectedGameLabel.setText("Selected Game: " + gameTitle);
-        gamesPane.setVisible(false);
-        gamesPane.setManaged(false);
-        modePane.setVisible(true);
-        modePane.setManaged(true);
-        lanPane.setVisible(false);
-        lanPane.setManaged(false);
-        settingsPane.setVisible(false);
-        settingsPane.setManaged(false);
+        selectedGameLabel.setText("Selected: " + gameTitle);
+        showPane(modePane);
     }
 
     private void showGamesPane() {
-        modePane.setVisible(false);
-        modePane.setManaged(false);
-        lanPane.setVisible(false);
-        lanPane.setManaged(false);
-        leaderboardPane.setVisible(false);
-        leaderboardPane.setManaged(false);
-        settingsPane.setVisible(false);
-        settingsPane.setManaged(false);
-        gamesPane.setVisible(true);
-        gamesPane.setManaged(true);
+        showPane(gamesPane);
     }
 
     private void showLanChoicePane() {
         UiSettings uiSettings = systemController.getUiSettings();
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
+
         Label title = new Label("LAN Multiplayer");
-        title.setStyle("-fx-font-size: 24px; -fx-text-fill: " + (lightTheme ? "#1f2933" : "#E2E8F0") + "; -fx-font-weight: 800;");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + ";");
+        Label gameLabel = new Label("Selected game: " + (selectedGameTitle == null ? "-" : selectedGameTitle));
+        gameLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + ";");
 
-        Label gameLabel = new Label("Selected Game: " + (selectedGameTitle == null ? "-" : selectedGameTitle));
-        gameLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#667085" : "#8EA0BF") + "; -fx-font-weight: 600;");
+        Button hostButton = createActionButton("Host Game", uiSettings, event -> showHostWaitingPane());
+        Button joinButton = createActionButton("Join Game", uiSettings, event -> showJoinPane());
+        Button backButton = createActionButton("Back", uiSettings, event -> showModePane(selectedGameTitle, selectedGameId));
+        backButton.setStyle(secondaryButtonStyle(uiSettings));
 
-        Button hostButton = createLanActionButton("Host Game");
-        hostButton.setOnAction(event -> showHostWaitingPane());
-
-        Button joinButton = createLanActionButton("Join Game");
-        joinButton.setOnAction(event -> showJoinPane());
-
-        Button backButton = createSecondaryButton("Back");
-        backButton.setOnAction(event -> showModeOnlyPane());
-
-        VBox card = createLanCard(title, gameLabel, hostButton, joinButton, backButton);
+        VBox card = createLanCard(uiSettings, title, gameLabel, hostButton, joinButton, backButton);
         lanPane.getChildren().setAll(card);
-        showLanOnlyPane();
+        showPane(lanPane);
     }
 
     private void showHostWaitingPane() {
         UiSettings uiSettings = systemController.getUiSettings();
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        String localIp = resolveLocalIp();
+
         Label title = new Label("Hosting LAN Match");
-        title.setStyle("-fx-font-size: 24px; -fx-text-fill: " + (lightTheme ? "#1f2933" : "#E2E8F0") + "; -fx-font-weight: 800;");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + ";");
+        Label ipLabel = new Label("Share this IP: " + resolveLocalIp());
+        ipLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: " + (lightTheme ? "#334155" : "#CFDAEA") + ";");
+        Label waiting = new Label("Waiting for player to connect...");
+        waiting.setStyle("-fx-font-size: 13px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + ";");
 
-        Label ipLabel = new Label("Share this IP: " + localIp);
-        ipLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#334155" : "#D1DBEA") + "; -fx-font-weight: 700;");
+        Button backButton = createActionButton("Back", uiSettings, event -> showLanChoicePane());
+        backButton.setStyle(secondaryButtonStyle(uiSettings));
 
-        Label waitingLabel = new Label("Waiting for player...");
-        waitingLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#A2B4D3") + "; -fx-font-weight: 600;");
-
-        Button backButton = createSecondaryButton("Back");
-        backButton.setOnAction(event -> showLanChoicePane());
-
-        VBox card = createLanCard(title, ipLabel, waitingLabel, backButton);
+        VBox card = createLanCard(uiSettings, title, ipLabel, waiting, backButton);
         lanPane.getChildren().setAll(card);
-        showLanOnlyPane();
+        showPane(lanPane);
         systemController.hostLanGame(selectedGameId);
     }
 
     private void showJoinPane() {
         UiSettings uiSettings = systemController.getUiSettings();
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        Label title = new Label("Join LAN Match");
-        title.setStyle("-fx-font-size: 24px; -fx-text-fill: " + (lightTheme ? "#1f2933" : "#E2E8F0") + "; -fx-font-weight: 800;");
 
+        Label title = new Label("Join LAN Match");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + ";");
         lanStatusLabel.setText("Enter host IP to connect.");
 
-        Button connectButton = createLanActionButton("Connect");
-        connectButton.setOnAction(event -> {
+        Button connectButton = createActionButton("Connect", uiSettings, event -> {
             String ip = lanIpField.getText() == null ? "" : lanIpField.getText().trim();
             if (ip.isEmpty()) {
                 lanStatusLabel.setText("Host IP address is required.");
@@ -380,108 +352,96 @@ public final class MainLobbyView {
             lanStatusLabel.setText("Connecting to " + ip + "...");
             systemController.joinLanGame(selectedGameId, ip);
         });
+        Button backButton = createActionButton("Back", uiSettings, event -> showLanChoicePane());
+        backButton.setStyle(secondaryButtonStyle(uiSettings));
 
-        Button backButton = createSecondaryButton("Back");
-        backButton.setOnAction(event -> showLanChoicePane());
-
-        VBox card = createLanCard(title, lanIpField, lanStatusLabel, connectButton, backButton);
+        VBox card = createLanCard(uiSettings, title, lanIpField, lanStatusLabel, connectButton, backButton);
         lanPane.getChildren().setAll(card);
-        showLanOnlyPane();
+        showPane(lanPane);
     }
 
-    private VBox createLanCard(javafx.scene.Node... children) {
-        UiSettings uiSettings = systemController.getUiSettings();
+    private VBox createLanCard(UiSettings uiSettings, javafx.scene.Node... children) {
         VBox card = new VBox(12, children);
         card.setPadding(new Insets(24));
-        card.setMaxWidth(420);
+        card.setMaxWidth(430);
         card.setAlignment(Pos.CENTER);
-        card.setStyle("-fx-background-color: " + panelColor(uiSettings) + "; -fx-background-radius: 16;");
-        card.setEffect(new DropShadow(16, Color.rgb(16, 24, 40, 0.10)));
+        card.setStyle("-fx-background-color: " + panelColor(uiSettings) + "; -fx-background-radius: 22;");
+        card.setEffect(new DropShadow(24, Color.rgb(15, 23, 42, 0.14)));
         return card;
     }
 
-    private Button createLanActionButton(String label) {
-        Button button = new Button(label);
-        button.setMaxWidth(Double.MAX_VALUE);
-        button.setStyle(primaryButtonStyle(systemController.getUiSettings()));
-        return button;
-    }
-
-    private Button createSecondaryButton(String label) {
-        Button button = new Button(label);
-        button.setMaxWidth(Double.MAX_VALUE);
-        button.setStyle(secondaryButtonStyle(systemController.getUiSettings()));
-        return button;
-    }
-
-    private void showModeOnlyPane() {
-        gamesPane.setVisible(false);
-        gamesPane.setManaged(false);
-        lanPane.setVisible(false);
-        lanPane.setManaged(false);
-        leaderboardPane.setVisible(false);
-        leaderboardPane.setManaged(false);
-        settingsPane.setVisible(false);
-        settingsPane.setManaged(false);
-        modePane.setVisible(true);
-        modePane.setManaged(true);
-    }
-
-    private void showLanOnlyPane() {
-        gamesPane.setVisible(false);
-        gamesPane.setManaged(false);
-        modePane.setVisible(false);
-        modePane.setManaged(false);
-        leaderboardPane.setVisible(false);
-        leaderboardPane.setManaged(false);
-        settingsPane.setVisible(false);
-        settingsPane.setManaged(false);
-        lanPane.setVisible(true);
-        lanPane.setManaged(true);
-    }
-
     private void showLeaderboardPane() {
-        UiSettings uiSettings = systemController.getUiSettings();
+        showLeaderboardPane(systemController.getUiSettings());
+        showPane(leaderboardPane);
+    }
+
+    private void showSettingsPane() {
+        showPane(settingsPane);
+    }
+
+    private void showLeaderboardPane(UiSettings uiSettings) {
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
         Label title = new Label("Leaderboard");
-        title.setStyle("-fx-font-size: 24px; -fx-text-fill: " + (lightTheme ? "#1f2933" : "#E2E8F0") + "; -fx-font-weight: 800;");
+        title.setStyle("-fx-font-size: 25px; -fx-font-weight: 800; -fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + ";");
 
         VBox scoreRows = new VBox(8);
         List<String> topScores = systemController.getTopScores();
         if (topScores.isEmpty()) {
-            Label empty = new Label("No scores yet. Play a game to set the first record.");
-            empty.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#A2B4D3") + "; -fx-font-weight: 600;");
+            Label empty = new Label("No scores yet. Play and save your first run.");
+            empty.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + ";");
             scoreRows.getChildren().add(empty);
         } else {
-            for (int index = 0; index < topScores.size(); index++) {
-                scoreRows.getChildren().add(createLeaderboardRow(topScores.get(index), index));
+            for (int i = 0; i < topScores.size(); i++) {
+                scoreRows.getChildren().add(createLeaderboardRow(topScores.get(i), i, lightTheme));
             }
         }
 
-        Button backButton = createSecondaryButton("Back");
-        backButton.setOnAction(event -> showGamesPane());
+        ScrollPane listScroll = new ScrollPane(scoreRows);
+        listScroll.setFitToWidth(true);
+        listScroll.setPrefViewportHeight(290);
+        listScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        listScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
-        VBox card = new VBox(12, title, scoreRows, backButton);
+        Button back = createActionButton("Back", uiSettings, event -> showGamesPane());
+        back.setStyle(secondaryButtonStyle(uiSettings));
+
+        VBox card = new VBox(12, title, listScroll, back);
         card.setPadding(new Insets(24));
         card.setMaxWidth(520);
-        card.setAlignment(Pos.TOP_LEFT);
-        card.setStyle("-fx-background-color: " + panelColor(uiSettings) + "; -fx-background-radius: 16;");
-        card.setEffect(new DropShadow(16, Color.rgb(16, 24, 40, 0.10)));
-
+        card.setStyle("-fx-background-color: " + panelColor(uiSettings) + "; -fx-background-radius: 22;");
+        card.setEffect(new DropShadow(24, Color.rgb(15, 23, 42, 0.14)));
         leaderboardPane.getChildren().setAll(card);
-        gamesPane.setVisible(false);
-        gamesPane.setManaged(false);
-        modePane.setVisible(false);
-        modePane.setManaged(false);
-        lanPane.setVisible(false);
-        lanPane.setManaged(false);
-        settingsPane.setVisible(false);
-        settingsPane.setManaged(false);
-        leaderboardPane.setVisible(true);
-        leaderboardPane.setManaged(true);
     }
 
-    private void showSettingsPane() {
+    private HBox createLeaderboardRow(String value, int index, boolean lightTheme) {
+        Label label = new Label(value);
+        label.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: " + (lightTheme ? "#334155" : "#D2DDED") + ";");
+
+        HBox row = new HBox(label);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(10, 12, 10, 12));
+        String rowColor = index % 2 == 0
+                ? (lightTheme ? "#EEF2FF" : "#1B2940")
+                : (lightTheme ? "#E7EFFA" : "#182336");
+        row.setStyle("-fx-background-color: " + rowColor + "; -fx-background-radius: 14;");
+        return row;
+    }
+
+    private Label settingValue(String title, String value, boolean lightTheme) {
+        Label label = new Label(title + ": " + value);
+        label.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: " + (lightTheme ? "#475569" : "#B7C8E0") + ";");
+        return label;
+    }
+
+    private Button createActionButton(String text, UiSettings uiSettings, javafx.event.EventHandler<javafx.event.ActionEvent> action) {
+        Button button = new Button(text);
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setStyle(primaryButtonStyle(uiSettings));
+        button.setOnAction(action);
+        return button;
+    }
+
+    private void showPane(VBox pane) {
         gamesPane.setVisible(false);
         gamesPane.setManaged(false);
         modePane.setVisible(false);
@@ -490,61 +450,73 @@ public final class MainLobbyView {
         lanPane.setManaged(false);
         leaderboardPane.setVisible(false);
         leaderboardPane.setManaged(false);
-        settingsPane.setVisible(true);
-        settingsPane.setManaged(true);
+        settingsPane.setVisible(false);
+        settingsPane.setManaged(false);
+
+        pane.setVisible(true);
+        pane.setManaged(true);
     }
 
-    private HBox createLeaderboardRow(String value, int index) {
-        UiSettings uiSettings = systemController.getUiSettings();
+    private String rowTone(String gameId, UiSettings uiSettings, boolean hover) {
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        Label rowLabel = new Label(value);
-        rowLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#334155" : "#D1DBEA") + "; -fx-font-weight: 600;");
-
-        HBox row = new HBox(rowLabel);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(10, 12, 10, 12));
-        String rowColor = index % 2 == 0
-                ? (lightTheme ? "#F8FAFC" : "#1A2639")
-                : (lightTheme ? "#EEF2F7" : "#182233");
-        row.setStyle("-fx-background-color: " + rowColor + "; -fx-background-radius: 10;");
-        return row;
-    }
-
-    private String pickTip() {
-        return DAILY_TIPS[ThreadLocalRandom.current().nextInt(DAILY_TIPS.length)];
+        String tone = switch (gameId) {
+            case "snake" -> (lightTheme ? "#E7F4EE" : "#223A32");
+            case "pong" -> (lightTheme ? "#EAF1FD" : "#23344E");
+            default -> (lightTheme ? "#F1EAFE" : "#2E2446");
+        };
+        if (!hover) {
+            return tone;
+        }
+        return switch (gameId) {
+            case "snake" -> (lightTheme ? "#DDEEE4" : "#2A4439");
+            case "pong" -> (lightTheme ? "#DEE9FA" : "#2A3C59");
+            default -> (lightTheme ? "#E8DDFB" : "#362A50");
+        };
     }
 
     private String appBackground(UiSettings uiSettings) {
         if (uiSettings.getThemeMode() == UiSettings.ThemeMode.DUSK) {
-            return "linear-gradient(to bottom right, #0F172A, #111A2A, #1A2240)";
+            return "linear-gradient(to bottom right, #0B1324, #111B33, #1C2A4A)";
         }
         return switch (uiSettings.getAccentStyle()) {
-            case LAVENDER -> "linear-gradient(to bottom right, #F8F9FA, #F2F1FF, #F5F0FF)";
-            case CORAL -> "linear-gradient(to bottom right, #F8F9FA, #FFF3EE, #FFECE4)";
-            default -> "linear-gradient(to bottom right, #F8F9FA, #F2F7FF, #F5F3FF)";
+            case LAVENDER -> "linear-gradient(to bottom right, #ECEFFA, #E5EAFD, #EFE5FF)";
+            case CORAL -> "linear-gradient(to bottom right, #ECF0FA, #FDEDE4, #FEE8DF)";
+            default -> "linear-gradient(to bottom right, #EEF2FA, #E7EEFF, #E7F4F0)";
         };
     }
 
     private String panelColor(UiSettings uiSettings) {
-        return uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT ? "#FFFFFF" : "#111A2A";
+        return uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT
+                ? "rgba(252,252,255,0.70)"
+                : "rgba(20,30,48,0.84)";
     }
 
     private String primaryButtonStyle(UiSettings uiSettings) {
         String rightTone = switch (uiSettings.getAccentStyle()) {
-            case LAVENDER -> "#D7C7F7";
-            case CORAL -> "#FFC2B3";
-            default -> "#C5E4C9";
+            case LAVENDER -> "#D8C2FF";
+            case CORAL -> "#FFBEA8";
+            default -> "#BFD4FF";
         };
-        return "-fx-background-color: linear-gradient(to right, #BEE9DA, " + rightTone + ");"
-                + "-fx-text-fill: #1f2933; -fx-font-size: 14px;"
-                + "-fx-font-weight: 700; -fx-background-radius: 12; -fx-padding: 11 18 11 18;";
+        return "-fx-background-color: linear-gradient(to right, #B9EACF, " + rightTone + ");"
+                + "-fx-text-fill: #0F172A;"
+                + "-fx-font-size: 13px;"
+                + "-fx-font-weight: 800;"
+                + "-fx-background-radius: 14;"
+                + "-fx-padding: 10 16 10 16;";
     }
 
     private String secondaryButtonStyle(UiSettings uiSettings) {
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        return "-fx-background-color: " + (lightTheme ? "#E7EDF5" : "#243349") + ";"
-                + "-fx-text-fill: " + (lightTheme ? "#1f2933" : "#D0D9E8") + "; -fx-font-size: 13px;"
-                + "-fx-font-weight: 700; -fx-background-radius: 12; -fx-padding: 10 20 10 20;";
+        return "-fx-background-color: " + (lightTheme ? "#DCE5F5" : "#253650") + ";"
+                + "-fx-text-fill: " + (lightTheme ? "#334155" : "#D0D9E8") + ";"
+                + "-fx-font-size: 13px;"
+                + "-fx-font-weight: 700;"
+                + "-fx-background-radius: 14;"
+                + "-fx-padding: 10 16 10 16;";
+    }
+
+    private String pickTip() {
+        return DAILY_TIPS[ThreadLocalRandom.current().nextInt(DAILY_TIPS.length)];
     }
 
     private void reloadLobby() {

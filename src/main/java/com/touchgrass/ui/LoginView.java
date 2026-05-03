@@ -10,6 +10,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -47,64 +48,79 @@ public final class LoginView {
         UiSettings uiSettings = systemController.getUiSettings();
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
 
-        Label title = new Label("Touch Grass");
-        title.setStyle("-fx-font-size: 36px; -fx-text-fill: " + (lightTheme ? "#111827" : "#E2E8F0") + "; -fx-font-weight: 800;");
+        Label heading = new Label("Welcome back");
+        heading.setStyle("-fx-font-size: 32px; -fx-text-fill: " + (lightTheme ? "#0F172A" : "#E2E8F0") + "; -fx-font-weight: 800;");
 
-        Label subtitle = new Label("Desktop Gaming Hub");
-        subtitle.setStyle("-fx-font-size: 14px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#94A3B8") + ";");
+        Label subtitle = new Label("Sign in to continue your gaming session");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: " + (lightTheme ? "#64748B" : "#9FB1CD") + ";");
+
+        Label brandTitle = new Label("Touch Grass");
+        brandTitle.setStyle("-fx-font-size: 40px; -fx-font-weight: 900; -fx-text-fill: " + (lightTheme ? "#0F172A" : "#E2E8F0") + ";");
+        Label brandTag = new Label("A premium desktop arcade lounge");
+        brandTag.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: " + (lightTheme ? "#475569" : "#A8B8D3") + ";");
+        Label brandDetail = new Label("Modern visuals, quick local play, and online duels.\nEverything in one clean space.");
+        brandDetail.setStyle("-fx-font-size: 13px; -fx-line-spacing: 4; -fx-text-fill: " + (lightTheme ? "#667085" : "#8EA0BF") + ";");
 
         usernameField.setPromptText("Username");
-        usernameField.setMaxWidth(320);
+        usernameField.setMaxWidth(Double.MAX_VALUE);
         usernameField.setStyle(inputStyle(uiSettings));
 
         passwordField.setPromptText("Password");
-        passwordField.setMaxWidth(320);
+        passwordField.setMaxWidth(Double.MAX_VALUE);
         passwordField.setStyle(inputStyle(uiSettings));
 
         Button loginButton = new Button("Login");
+        loginButton.setMaxWidth(Double.MAX_VALUE);
         loginButton.setStyle(primaryButtonStyle(uiSettings));
         loginButton.setOnAction(event -> attemptLogin());
 
         Button registerButton = new Button("Register");
+        registerButton.setMaxWidth(Double.MAX_VALUE);
         registerButton.setStyle(secondaryButtonStyle(uiSettings));
         registerButton.setOnAction(event -> showRegisterPane());
 
         feedbackLabel.setStyle("-fx-text-fill: #B42318; -fx-font-size: 12px; -fx-font-weight: 600;");
 
-        HBox buttonRow = new HBox(12, loginButton, registerButton);
+        HBox buttonRow = new HBox(10, loginButton, registerButton);
         buttonRow.setAlignment(Pos.CENTER);
+        HBox.setHgrow(loginButton, Priority.ALWAYS);
+        HBox.setHgrow(registerButton, Priority.ALWAYS);
 
         Button backToLoginButton = new Button("Back to Login");
+        backToLoginButton.setMaxWidth(Double.MAX_VALUE);
         backToLoginButton.setStyle(secondaryButtonStyle(uiSettings));
         backToLoginButton.setOnAction(event -> showLoginPane());
 
         Button createAccountButton = new Button("Create Account");
+        createAccountButton.setMaxWidth(Double.MAX_VALUE);
         createAccountButton.setStyle(primaryButtonStyle(uiSettings));
         createAccountButton.setOnAction(event -> attemptRegistration());
 
         registerUsernameField.setPromptText("Username");
-        registerUsernameField.setMaxWidth(320);
+        registerUsernameField.setMaxWidth(Double.MAX_VALUE);
         registerUsernameField.setStyle(inputStyle(uiSettings));
 
         registerEmailField.setPromptText("Email");
-        registerEmailField.setMaxWidth(320);
+        registerEmailField.setMaxWidth(Double.MAX_VALUE);
         registerEmailField.setStyle(inputStyle(uiSettings));
 
         registerPasswordField.setPromptText("Password");
-        registerPasswordField.setMaxWidth(320);
+        registerPasswordField.setMaxWidth(Double.MAX_VALUE);
         registerPasswordField.setStyle(inputStyle(uiSettings));
 
         registerConfirmPasswordField.setPromptText("Confirm Password");
-        registerConfirmPasswordField.setMaxWidth(320);
+        registerConfirmPasswordField.setMaxWidth(Double.MAX_VALUE);
         registerConfirmPasswordField.setStyle(inputStyle(uiSettings));
 
         registerFeedbackLabel.setStyle("-fx-text-fill: #B42318; -fx-font-size: 12px; -fx-font-weight: 600;");
 
-        HBox registerButtonRow = new HBox(12, createAccountButton, backToLoginButton);
+        HBox registerButtonRow = new HBox(10, createAccountButton, backToLoginButton);
         registerButtonRow.setAlignment(Pos.CENTER);
+        HBox.setHgrow(createAccountButton, Priority.ALWAYS);
+        HBox.setHgrow(backToLoginButton, Priority.ALWAYS);
 
         loginPane.getChildren().setAll(usernameField, passwordField, buttonRow, feedbackLabel);
-        loginPane.setAlignment(Pos.CENTER);
+        loginPane.setAlignment(Pos.CENTER_LEFT);
 
         registerPane.getChildren().setAll(
                 registerUsernameField,
@@ -113,23 +129,42 @@ public final class LoginView {
                 registerConfirmPasswordField,
                 registerButtonRow,
                 registerFeedbackLabel);
-        registerPane.setAlignment(Pos.CENTER);
+        registerPane.setAlignment(Pos.CENTER_LEFT);
         registerPane.setVisible(false);
         registerPane.setManaged(false);
 
         StackPane authStack = new StackPane(loginPane, registerPane);
-        authStack.setPrefWidth(340);
+        authStack.setPrefWidth(360);
+        authStack.setMaxWidth(Double.MAX_VALUE);
 
-        VBox card = new VBox(14, title, subtitle, authStack);
-        card.setAlignment(Pos.CENTER);
-        card.setPadding(new Insets(28));
-        card.setMaxWidth(450);
-        card.setStyle("-fx-background-color: " + (lightTheme ? "#FFFFFF" : "#111A2A") + "; -fx-background-radius: 16;");
-        card.setEffect(new javafx.scene.effect.DropShadow(16, javafx.scene.paint.Color.rgb(16, 24, 40, 0.12)));
+        VBox authCard = new VBox(16, heading, subtitle, authStack);
+        authCard.setPadding(new Insets(28));
+        authCard.setMaxWidth(430);
+        authCard.setStyle("-fx-background-color: " + panelColor(lightTheme) + ";"
+                + "-fx-background-radius: 24;"
+                + "-fx-border-radius: 24;"
+                + "-fx-border-color: " + (lightTheme ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.10)") + ";"
+                + "-fx-border-width: 1.2;");
+        authCard.setEffect(new javafx.scene.effect.DropShadow(30, javafx.scene.paint.Color.rgb(15, 23, 42, 0.20)));
 
-        VBox root = new VBox(card);
+        VBox brandCard = new VBox(16, brandTitle, brandTag, brandDetail);
+        brandCard.setPadding(new Insets(30));
+        brandCard.setMaxWidth(420);
+        brandCard.setStyle("-fx-background-color: " + glassTone(lightTheme) + ";"
+                + "-fx-background-radius: 26;"
+                + "-fx-border-radius: 26;"
+                + "-fx-border-color: " + (lightTheme ? "rgba(255,255,255,0.60)" : "rgba(255,255,255,0.12)") + ";"
+                + "-fx-border-width: 1.1;");
+        brandCard.setEffect(new javafx.scene.effect.DropShadow(24, javafx.scene.paint.Color.rgb(15, 23, 42, 0.16)));
+
+        HBox layout = new HBox(24, brandCard, authCard);
+        layout.setAlignment(Pos.CENTER);
+        layout.setMaxWidth(920);
+        HBox.setHgrow(authCard, Priority.ALWAYS);
+
+        VBox root = new VBox(layout);
         root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(24));
+        root.setPadding(new Insets(28));
         root.setStyle("-fx-background-color: " + backgroundGradient(uiSettings) + ";");
 
         systemController.setStatusMessageListener(message -> {
@@ -195,46 +230,54 @@ public final class LoginView {
 
     private String inputStyle(UiSettings uiSettings) {
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        return "-fx-background-color: " + (lightTheme ? "#F8FAFC" : "#1A2639") + ";"
-                + "-fx-text-fill: " + (lightTheme ? "#1F2937" : "#E2E8F0") + ";"
+        return "-fx-background-color: " + (lightTheme ? "#EEF2FF" : "#1A2639") + ";"
+                + "-fx-text-fill: " + (lightTheme ? "#1E293B" : "#E2E8F0") + ";"
                 + "-fx-prompt-text-fill: " + (lightTheme ? "#94A3B8" : "#7B8DA8") + ";"
                 + "-fx-font-size: 14px;"
-                + "-fx-background-radius: 10;"
-                + "-fx-padding: 10 12 10 12;";
+                + "-fx-background-radius: 14;"
+                + "-fx-padding: 12 14 12 14;";
     }
 
     private String primaryButtonStyle(UiSettings uiSettings) {
         String accentRight = switch (uiSettings.getAccentStyle()) {
-            case LAVENDER -> "#CBB7FF";
-            case CORAL -> "#FFC2B3";
-            default -> "#C6D7FF";
+            case LAVENDER -> "#D7C2FF";
+            case CORAL -> "#FFBEA8";
+            default -> "#BFD4FF";
         };
-        return "-fx-background-color: linear-gradient(to right, #BDE7C5, " + accentRight + ");"
-                + "-fx-text-fill: #1F2937;"
+        return "-fx-background-color: linear-gradient(to right, #B8E9CF, " + accentRight + ");"
+                + "-fx-text-fill: #0F172A;"
                 + "-fx-font-size: 14px;"
                 + "-fx-font-weight: 700;"
-                + "-fx-background-radius: 10;"
-                + "-fx-padding: 10 24 10 24;";
+                + "-fx-background-radius: 14;"
+                + "-fx-padding: 11 18 11 18;";
     }
 
     private String secondaryButtonStyle(UiSettings uiSettings) {
         boolean lightTheme = uiSettings.getThemeMode() == UiSettings.ThemeMode.LIGHT;
-        return "-fx-background-color: " + (lightTheme ? "#E6ECF3" : "#22324A") + ";"
+        return "-fx-background-color: " + (lightTheme ? "#DCE5F5" : "#22324A") + ";"
                 + "-fx-text-fill: " + (lightTheme ? "#334155" : "#D0D9E8") + ";"
                 + "-fx-font-size: 14px;"
                 + "-fx-font-weight: 600;"
-                + "-fx-background-radius: 10;"
-                + "-fx-padding: 10 24 10 24;";
+                + "-fx-background-radius: 14;"
+                + "-fx-padding: 11 18 11 18;";
     }
 
     private String backgroundGradient(UiSettings uiSettings) {
         if (uiSettings.getThemeMode() == UiSettings.ThemeMode.DUSK) {
-            return "linear-gradient(to bottom right, #0F172A, #111A2A, #1A2240)";
+            return "linear-gradient(to bottom right, #0B1324, #111B33, #1C2A4A)";
         }
         return switch (uiSettings.getAccentStyle()) {
-            case LAVENDER -> "linear-gradient(to bottom right, #F8F9FA, #F3EEFF, #EEEFFF)";
-            case CORAL -> "linear-gradient(to bottom right, #F8F9FA, #FFF2ED, #FFE9E1)";
-            default -> "linear-gradient(to bottom right, #F8F9FA, #EEF5FF, #F4F0FF)";
+            case LAVENDER -> "linear-gradient(to bottom right, #EDEFFA, #E8EAFE, #EDE5FF)";
+            case CORAL -> "linear-gradient(to bottom right, #EEF0FA, #FDEFE8, #FFE8DD)";
+            default -> "linear-gradient(to bottom right, #EEF2FA, #E7EEFF, #E7F4F0)";
         };
+    }
+
+    private String panelColor(boolean lightTheme) {
+        return lightTheme ? "rgba(252, 252, 255, 0.68)" : "rgba(20, 30, 48, 0.85)";
+    }
+
+    private String glassTone(boolean lightTheme) {
+        return lightTheme ? "rgba(240, 247, 255, 0.54)" : "rgba(18, 28, 44, 0.70)";
     }
 }
