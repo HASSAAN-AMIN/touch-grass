@@ -34,4 +34,8 @@ public abstract class Session {
     public abstract void handleInput(InputCommand inputCommand, boolean pressed);
 
     public abstract void tick();
+
+    public abstract boolean isGameOver();
+
+    public abstract int getScore();
 }

@@ -38,7 +38,7 @@ public final class SnakeLogic {
 
         snakeBody.addFirst(nextHead);
         if (nextHead.equals(food)) {
-            score++;
+            score += 10;
             spawnFood();
             return;
         }

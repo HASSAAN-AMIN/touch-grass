@@ -20,6 +20,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -35,22 +36,32 @@ public final class GameView {
 
     private final Stage stage;
     private final SystemController systemController;
+    private final String gameId;
     private final Session activeSession;
     private final Canvas canvas;
     private final Set<KeyCode> pressedKeys;
     private final BorderPane root;
+    private final StackPane playArea;
+    private final VBox gameOverOverlay;
+    private final Label gameOverScoreLabel;
     private AnimationTimer animationTimer;
     private long lastFrameTime;
     private long lastLogicTickTime;
     private double fps;
+    private boolean gameOverOverlayShown;
+    private boolean gameOverActionTriggered;
 
-    public GameView(Stage stage, SystemController systemController, Session activeSession) {
+    public GameView(Stage stage, SystemController systemController, String gameId, Session activeSession) {
         this.stage = stage;
         this.systemController = systemController;
+        this.gameId = gameId;
         this.activeSession = activeSession;
         this.canvas = new Canvas(WIDTH, HEIGHT);
         this.pressedKeys = ConcurrentHashMap.newKeySet();
         this.root = new BorderPane();
+        this.playArea = new StackPane();
+        this.gameOverOverlay = new VBox(12);
+        this.gameOverScoreLabel = new Label();
     }
 
     public Parent createRoot() {
@@ -71,9 +82,13 @@ public final class GameView {
 
         VBox canvasContainer = new VBox(canvas);
         canvasContainer.setPadding(new Insets(0, 20, 20, 20));
+        canvasContainer.setAlignment(Pos.CENTER);
+
+        setupGameOverOverlay();
+        playArea.getChildren().setAll(canvasContainer, gameOverOverlay);
 
         root.setTop(topBar);
-        root.setCenter(canvasContainer);
+        root.setCenter(playArea);
         root.setStyle("-fx-background-color: #F8F9FA;");
         root.setFocusTraversable(true);
         return root;
@@ -95,6 +110,8 @@ public final class GameView {
         GraphicsContext graphics = canvas.getGraphicsContext2D();
         lastFrameTime = 0L;
         lastLogicTickTime = 0L;
+        gameOverOverlayShown = false;
+        gameOverActionTriggered = false;
         animationTimer = new AnimationTimer() {
             @Override
             public void handle(long now) {
@@ -108,6 +125,10 @@ public final class GameView {
                 if (lastLogicTickTime == 0L || now - lastLogicTickTime >= LOGIC_TICK_NS) {
                     activeSession.tick();
                     lastLogicTickTime = now;
+                }
+                if (!gameOverOverlayShown && activeSession.isGameOver()) {
+                    stopGameLoop();
+                    showGameOverOverlay();
                 }
                 renderFrame(graphics);
             }
@@ -220,17 +241,62 @@ public final class GameView {
     }
 
     private void returnToLobby() {
+        handleGameOverAction(false);
+    }
+
+    private void setupGameOverOverlay() {
+        Label title = new Label("Game Over");
+        title.setStyle("-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #1F2937;");
+
+        gameOverScoreLabel.setStyle("-fx-font-size: 17px; -fx-font-weight: 600; -fx-text-fill: #4B5563;");
+
+        Button saveAndQuitButton = new Button("Save Score & Quit");
+        saveAndQuitButton.setStyle(
+                "-fx-background-color: linear-gradient(to right, #BDE7C5, #D7C7F7);"
+                        + "-fx-text-fill: #1F2937; -fx-font-size: 14px; -fx-font-weight: 700;"
+                        + "-fx-background-radius: 12; -fx-padding: 10 20 10 20;");
+        saveAndQuitButton.setOnAction(event -> handleGameOverAction(true));
+
+        Button quitButton = new Button("Quit to Lobby");
+        quitButton.setStyle(
+                "-fx-background-color: #E9EEF2; -fx-text-fill: #374151; -fx-font-size: 14px; -fx-font-weight: 700;"
+                        + "-fx-background-radius: 12; -fx-padding: 10 20 10 20;");
+        quitButton.setOnAction(event -> handleGameOverAction(false));
+
+        HBox actions = new HBox(12, saveAndQuitButton, quitButton);
+        actions.setAlignment(Pos.CENTER);
+
+        VBox card = new VBox(10, title, gameOverScoreLabel, actions);
+        card.setAlignment(Pos.CENTER);
+        card.setPadding(new Insets(24));
+        card.setMaxWidth(420);
+        card.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 16;");
+
+        gameOverOverlay.getChildren().setAll(card);
+        gameOverOverlay.setAlignment(Pos.CENTER);
+        gameOverOverlay.setStyle("-fx-background-color: rgba(248, 249, 250, 0.78);");
+        gameOverOverlay.setVisible(false);
+        gameOverOverlay.setManaged(false);
+    }
+
+    private void showGameOverOverlay() {
+        gameOverOverlayShown = true;
+        gameOverScoreLabel.setText("Final Score: " + activeSession.getScore());
+        gameOverOverlay.setVisible(true);
+        gameOverOverlay.setManaged(true);
+    }
+
+    private void handleGameOverAction(boolean saveScore) {
+        if (gameOverActionTriggered) {
+            return;
+        }
+        gameOverActionTriggered = true;
         stopGameLoop();
         activeSession.end();
         if (stage.getScene() != null) {
             stage.getScene().setOnKeyPressed(null);
             stage.getScene().setOnKeyReleased(null);
         }
-        MainLobbyView mainLobbyView = new MainLobbyView(stage, systemController);
-        if (stage.getScene() == null) {
-            stage.setScene(mainLobbyView.createScene());
-            return;
-        }
-        stage.getScene().setRoot(mainLobbyView.createRoot());
+        systemController.handleGameOver(gameId, activeSession.getScore(), saveScore);
     }
 }

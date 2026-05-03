@@ -57,6 +57,16 @@ public final class LocalSession extends Session {
         }
     }
 
+    @Override
+    public boolean isGameOver() {
+        return snakeLogic != null && snakeLogic.isGameOver();
+    }
+
+    @Override
+    public int getScore() {
+        return snakeLogic == null ? 0 : snakeLogic.getScore();
+    }
+
     public SnakeLogic getSnakeLogic() {
         return snakeLogic;
     }

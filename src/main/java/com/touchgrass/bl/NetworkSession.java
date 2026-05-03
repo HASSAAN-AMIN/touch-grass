@@ -49,6 +49,16 @@ public final class NetworkSession extends Session {
         syncState();
     }
 
+    @Override
+    public boolean isGameOver() {
+        return false;
+    }
+
+    @Override
+    public int getScore() {
+        return 0;
+    }
+
     public void syncState() {
         System.out.println("Syncing network session state...");
     }
