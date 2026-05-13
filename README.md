@@ -1,3 +1,6 @@
+# VIBE CODED PROJECT
+` Not Really worth checking this shi is Vibe Coded uhh i m SORRY 😞`
+
 # Touch Grass
 
 Touch Grass is a JavaFX desktop gaming hub focused on clean architecture, responsive UI, and modular gameplay sessions.  
